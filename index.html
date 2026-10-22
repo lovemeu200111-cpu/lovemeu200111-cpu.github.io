@@ -1206,17 +1206,17 @@ var SFX = (function(){
     if (!on || !wake()) return;
     var t = ctx.currentTime + 0.001;
     if (kind === "page"){          /* 翻页：一声轻拂 */
-      air(t, 0.26, 420, 1500, 0.9, 0.055);
-      tone(t, 190, 120, 0.16, 0.030);
+      air(t, 0.26, 420, 1500, 0.9, 0.30);
+      tone(t, 190, 120, 0.16, 0.17);
     } else if (kind === "open"){   /* 开片：快门，咔—嗒 */
-      air(t,        0.012, 2600, 1500, 7, 0.17);
-      air(t + 0.055, 0.016, 1700,  800, 6, 0.13);
-      tone(t + 0.055, 150, 80, 0.10, 0.045);
+      air(t,         0.014, 2600, 1500, 5, 0.95);
+      air(t + 0.055, 0.018, 1700,  800, 4, 0.72);
+      tone(t + 0.055, 150, 80, 0.10, 0.26);
     } else if (kind === "close"){  /* 关片：快门合上 */
-      air(t, 0.014, 1500, 2400, 7, 0.12);
-      tone(t, 140, 90, 0.09, 0.035);
+      air(t, 0.016, 1500, 2400, 5, 0.68);
+      tone(t, 140, 90, 0.09, 0.20);
     } else if (kind === "tick"){   /* 小按钮：一点点 */
-      air(t, 0.010, 2000, 1400, 8, 0.075);
+      air(t, 0.022, 2000, 1400, 5, 0.52);
     }
   }
 
@@ -1237,6 +1237,8 @@ var SFX = (function(){
     play: play,
     /* 自检：在地址栏控制台敲 SFX.state() 就知道声音系统活没活 */
     state: function(){ return on ? (ctx ? ctx.state : "未创建") : "已静音"; },
+    bus: function(){ return bus; },
+    wake: function(){ return wake(); },
     test: function(){ on = true; document.body.classList.remove("muted"); play("open"); return SFX.state(); }
   };
 })();
