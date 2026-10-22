@@ -52,6 +52,17 @@ body.lang-en .en{display:inline}
 #mode-switch button.on{background:var(--ink);color:#fff}
 #mode-switch[hidden]{display:none}
 
+/* 声音开关：右下角 */
+#sfx-toggle{position:fixed;right:var(--pad);bottom:var(--pad);z-index:200;
+  background:var(--chip);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  border-radius:var(--r);padding:10px 13px;color:var(--ink);
+  display:flex;align-items:center;gap:7px;font-weight:500;font-size:13px}
+#sfx-toggle svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round}
+#sfx-toggle .off{display:none} body.muted #sfx-toggle .off{display:block}
+body.muted #sfx-toggle .on{display:none}
+body.muted #sfx-toggle{color:var(--muted)}
+
 .page{position:fixed;inset:0;overflow:hidden}
 .page[hidden]{display:none}
 
@@ -267,6 +278,11 @@ body.nocap .card-cap{display:none}
   </nav>
 </header>
 <button id="lang-toggle">中 / EN</button>
+<button id="sfx-toggle" aria-label="声音">
+  <svg class="on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
+  <svg class="off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9.5l4 5M21 9.5l-4 5"/></svg>
+  <span class="zh">声音</span><span class="en">Sound</span>
+</button>
 
 
 <div id="mode-switch">
@@ -697,13 +713,17 @@ body.nocap .card-cap{display:none}
 /* 第二步的脚本只负责「能点开看」。四列流动、无限循环、视频自动播、筛选都在第三步。 */
 var WORKS = [{"n":1,"zh":"若能再相见","en":"If We Meet Again","d":"02:43","gz":"宠物","ge":"Pets","lz":"韩语","le":"Korean"},{"n":2,"zh":"在见到你之前","en":"Until I Saw You","d":"02:19","gz":"爱情","ge":"Romance","lz":"韩语","le":"Korean"},{"n":3,"zh":"新人冥使的第一单 1","en":"Rookie Reaper 1","d":"02:19","gz":"剧情","ge":"Drama","lz":"日语","le":"Japanese"},{"n":4,"zh":"新人冥使的第一单 2","en":"Rookie Reaper 2","d":"06:14","gz":"剧情","ge":"Drama","lz":"日语","le":"Japanese"},{"n":5,"zh":"Beautiful","en":"Beautiful","d":"02:30","gz":"动画","ge":"Animation","lz":"英语","le":"English"},{"n":6,"zh":"Blackstone","en":"Blackstone","d":"02:03","gz":"悬疑","ge":"Mystery","lz":"英语","le":"English"},{"n":7,"zh":"Of course, Sir","en":"Of course, Sir","d":"03:14","gz":"科幻","ge":"Sci-Fi","lz":"英语","le":"English"},{"n":8,"zh":"夜港","en":"The Night Harbour","d":"02:20","gz":"黑帮","ge":"Crime","lz":"日语","le":"Japanese"},{"n":9,"zh":"檐上霜","en":"Frost on the Eaves","d":"02:02","gz":"动画","ge":"Animation","lz":"中文","le":"Chinese"},{"n":10,"zh":"末班车","en":"Last Train","d":"02:44","gz":"穿越","ge":"Time Travel","lz":"中文","le":"Chinese"},{"n":11,"zh":"游戏世界的归航之旅 1","en":"The Long Way Home 1","d":"02:24","gz":"穿越","ge":"Time Travel","lz":"日语","le":"Japanese"},{"n":12,"zh":"游戏世界的归航之旅 2","en":"The Long Way Home 2","d":"03:12","gz":"穿越","ge":"Time Travel","lz":"日语","le":"Japanese"},{"n":13,"zh":"Bait Girls","en":"Bait Girls","d":"02:11","gz":"悬疑","ge":"Mystery","lz":"韩语","le":"Korean"},{"n":14,"zh":"Lily and Moss","en":"Lily and Moss","d":"02:50","gz":"动画","ge":"Animation","lz":"英语","le":"English"},{"n":15,"zh":"归途","en":"The Way Home","d":"02:01","gz":"宠物","ge":"Pets","lz":"韩语","le":"Korean"},{"n":16,"zh":"青春篮途 1","en":"Youth on the Court 1","d":"02:37","gz":"运动","ge":"Sports","lz":"日语","le":"Japanese"},{"n":17,"zh":"青春篮途 2","en":"Youth on the Court 2","d":"02:26","gz":"运动","ge":"Sports","lz":"日语","le":"Japanese"},{"n":18,"zh":"动物餐厅","en":"Animal Restaurant","d":"02:11","gz":"动画","ge":"Animation","lz":"日语","le":"Japanese"},{"n":19,"zh":"我的体内藏着番剧主角","en":"The Anime Girl Inside Me","d":"02:32","gz":"剧情","ge":"Drama","lz":"中文","le":"Chinese"}];
 var PAGES = ["p-home","p-list","p-play","p-about"];
+var nowPage = "p-home";
 function show(id){
+  if (window.SFX && id !== nowPage && id !== "p-play") SFX.play("page");
+  nowPage = id;
   PAGES.forEach(function(p){ document.getElementById(p).hidden = (p !== id); });
   document.getElementById("view-toggle").hidden = (id === "p-play" || id === "p-about");
   document.getElementById("mode-switch").hidden = (id !== "p-home");
   document.getElementById("nav-header").classList.remove("open");
   document.getElementById("nav-header").hidden = (id === "p-play");
   document.getElementById("lang-toggle").hidden = (id === "p-play");
+  document.getElementById("sfx-toggle").hidden = (id === "p-play");
   if (window.FLOW) FLOW.on(id === "p-home");
   if (window.STOPALL && id !== "p-home") STOPALL();
 }
@@ -727,12 +747,14 @@ document.querySelectorAll(".nav-drop a").forEach(function(a){
 
   tog.addEventListener("click", function(e){
     e.stopPropagation();
+    if (window.SFX) SFX.play("tick");
     var on = box.classList.toggle("open");
     tog.setAttribute("aria-expanded", on ? "true" : "false");
   });
 
   wrap.addEventListener("click", function(e){
     var b = e.target.closest(".gchip"); if (!b) return;
+    if (window.SFX) SFX.play("tick");
     var g = b.dataset.g;
     wrap.querySelectorAll(".gchip").forEach(function(x){ x.classList.toggle("on", x === b); });
     rows.forEach(function(r){ r.hidden = !!g && r.dataset.g !== g; });
@@ -761,10 +783,12 @@ document.querySelectorAll(".lrow").forEach(function(el){
   el.addEventListener("click", function(){ PLAY.open(+el.dataset.n); });
 });
 document.getElementById("p-close").onclick = function(){ PLAY.close(); };
-document.getElementById("lang-toggle").onclick = function(){ document.body.classList.toggle("lang-en"); };
+document.getElementById("lang-toggle").onclick = function(){
+  if (window.SFX) SFX.play("tick"); document.body.classList.toggle("lang-en"); };
 /* 海报 ｜ 截图 —— 两套封面都留着，访客自己切 */
 document.querySelectorAll("#mode-switch button").forEach(function(b){
   b.onclick = function(){
+    if (window.SFX) SFX.play("tick");
     document.body.classList.toggle("frames", b.dataset.mode === "frame");
     document.querySelectorAll("#mode-switch button").forEach(function(x){
       x.classList.toggle("on", x === b);
@@ -1009,6 +1033,7 @@ var PLAY = (function(){
     pimg.src = "images/cover" + two(p.n) + ".jpg";
     nimg.src = "images/cover" + two(q.n) + ".jpg";
 
+    if (window.SFX) SFX.play("open");
     show("p-play");
     go();
     wake();
@@ -1025,6 +1050,7 @@ var PLAY = (function(){
   }
 
   function close(){
+    if (window.SFX) SFX.play("close");
     if (document.fullscreenElement) { try { document.exitFullscreen(); } catch(e){} }
     pv.pause(); pv.removeAttribute("src"); pv.load();
     page.classList.remove("idle"); clearTimeout(idle);
@@ -1123,6 +1149,85 @@ var PLAY = (function(){
       });
     });
   }).observe(document.body, { childList: true, subtree: true });
+})();
+/* ============================================================
+   界面声音：全部现场合成，不下载任何音频文件
+   翻页＝一声轻拂　开片＝快门（跟字标那个光圈是一套的）
+   ============================================================ */
+var SFX = (function(){
+  var ctx = null, bus = null, noise = null;
+  var on = true;
+  try { on = localStorage.getItem("aubrey-sfx") !== "off"; } catch(e){}
+  document.body.classList.toggle("muted", !on);
+
+  function wake(){
+    if (ctx) { if (ctx.state === "suspended") ctx.resume(); return ctx; }
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    ctx = new AC();
+    bus = ctx.createGain(); bus.gain.value = 0.85;   /* 总音量，嫌吵改小、听不见改大 */
+    bus.connect(ctx.destination);
+    /* 一秒白噪声，所有「气声」都从它来 */
+    noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    var d = noise.getChannelData(0);
+    for (var i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    return ctx;
+  }
+
+  /* 一段带滤波的噪声：气声、快门的咔嗒都用它 */
+  function air(t0, dur, f1, f2, q, vol){
+    var src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
+    var bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = q;
+    bp.frequency.setValueAtTime(f1, t0);
+    bp.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + dur * 0.16);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(bp); bp.connect(g); g.connect(bus);
+    src.start(t0); src.stop(t0 + dur + 0.02);
+  }
+
+  /* 一个短音：低频的「咚」 */
+  function tone(t0, f1, f2, dur, vol, type){
+    var o = ctx.createOscillator(); o.type = type || "sine";
+    o.frequency.setValueAtTime(f1, t0);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(bus);
+    o.start(t0); o.stop(t0 + dur + 0.02);
+  }
+
+  function play(kind){
+    if (!on || !wake()) return;
+    var t = ctx.currentTime + 0.001;
+    if (kind === "page"){          /* 翻页：一声轻拂 */
+      air(t, 0.26, 420, 1500, 0.9, 0.055);
+      tone(t, 190, 120, 0.16, 0.030);
+    } else if (kind === "open"){   /* 开片：快门，咔—嗒 */
+      air(t,        0.012, 2600, 1500, 7, 0.17);
+      air(t + 0.055, 0.016, 1700,  800, 6, 0.13);
+      tone(t + 0.055, 150, 80, 0.10, 0.045);
+    } else if (kind === "close"){  /* 关片：快门合上 */
+      air(t, 0.014, 1500, 2400, 7, 0.12);
+      tone(t, 140, 90, 0.09, 0.035);
+    } else if (kind === "tick"){   /* 小按钮：一点点 */
+      air(t, 0.010, 2000, 1400, 8, 0.075);
+    }
+  }
+
+  var btn = document.getElementById("sfx-toggle");
+  if (btn) btn.addEventListener("click", function(){
+    on = !on;
+    document.body.classList.toggle("muted", !on);
+    try { localStorage.setItem("aubrey-sfx", on ? "on" : "off"); } catch(e){}
+    if (on) play("tick");
+  });
+
+  return { play: play };
 })();
 </script>
 </body>
