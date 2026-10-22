@@ -1165,6 +1165,7 @@ var SFX = (function(){
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
+    if (ctx.state === "suspended" && ctx.resume) ctx.resume();   /* Safari 新建即挂起 */
     bus = ctx.createGain(); bus.gain.value = 0.85;   /* 总音量，嫌吵改小、听不见改大 */
     bus.connect(ctx.destination);
     /* 一秒白噪声，所有「气声」都从它来 */
@@ -1219,6 +1220,11 @@ var SFX = (function(){
     }
   }
 
+  /* 第一次点击页面任何地方就解锁，之后出声才不会被浏览器拦 */
+  ["pointerdown","touchstart","keydown"].forEach(function(ev){
+    addEventListener(ev, function unlock(){ if (on) wake(); }, { passive: true });
+  });
+
   var btn = document.getElementById("sfx-toggle");
   if (btn) btn.addEventListener("click", function(){
     on = !on;
@@ -1227,7 +1233,12 @@ var SFX = (function(){
     if (on) play("tick");
   });
 
-  return { play: play };
+  return {
+    play: play,
+    /* 自检：在地址栏控制台敲 SFX.state() 就知道声音系统活没活 */
+    state: function(){ return on ? (ctx ? ctx.state : "未创建") : "已静音"; },
+    test: function(){ on = true; document.body.classList.remove("muted"); play("open"); return SFX.state(); }
+  };
 })();
 </script>
 </body>
