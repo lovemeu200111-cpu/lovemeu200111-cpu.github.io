@@ -52,6 +52,11 @@ body.lang-en .en{display:inline}
 #mode-switch button.on{background:var(--ink);color:#fff}
 #mode-switch[hidden]{display:none}
 
+/* 临时调试条，确认没问题后删掉 */
+#dbg{position:fixed;left:var(--pad);top:var(--pad);z-index:300;background:#1e1c21;color:#fff;
+  border-radius:var(--r);padding:8px 12px;font:600 12px/1.3 var(--mono,monospace);
+  opacity:.25;transition:opacity .15s linear;pointer-events:none}
+
 /* 声音开关：右下角 */
 #sfx-toggle{position:fixed;right:var(--pad);bottom:var(--pad);z-index:200;
   background:var(--chip);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
@@ -278,6 +283,7 @@ body.nocap .card-cap{display:none}
   </nav>
 </header>
 <button id="lang-toggle">中 / EN</button>
+<div id="dbg">版本 SFX-3　点一下页面任意处</div>
 <button id="sfx-toggle" aria-label="声音">
   <svg class="on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
   <svg class="off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9.5l4 5M21 9.5l-4 5"/></svg>
@@ -1175,55 +1181,58 @@ var SFX = (function(){
     return ctx;
   }
 
-  /* 一段带滤波的噪声：气声、快门的咔嗒都用它 */
-  function air(t0, dur, f1, f2, q, vol){
+  /* 一记干脆的「嗒」：很窄的一段噪声，高频，几毫秒就收干净，不留低音 */
+  function click(t0, f, dur, vol, q){
     var src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
-    var bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = q;
+    var bp = ctx.createBiquadFilter(); bp.type = "bandpass";
+    bp.frequency.value = f; bp.Q.value = q || 2.2;
+    var hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 900; /* 砍掉所有低音 */
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol, t0 + 0.0012);      /* 1 毫秒冲上去 */
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); /* 立刻收掉 */
+    src.connect(bp); bp.connect(hp); hp.connect(g); g.connect(bus);
+    src.start(t0); src.stop(t0 + dur + 0.01);
+  }
+
+  /* 一道气流声：翻页用，同样不带低音 */
+  function swish(t0, dur, f1, f2, vol){
+    var src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
+    var bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 0.7;
     bp.frequency.setValueAtTime(f1, t0);
     bp.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
+    var hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 800;
     var g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(vol, t0 + dur * 0.16);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + dur * 0.22);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    src.connect(bp); bp.connect(g); g.connect(bus);
+    src.connect(bp); bp.connect(hp); hp.connect(g); g.connect(bus);
     src.start(t0); src.stop(t0 + dur + 0.02);
   }
 
-  /* 一个短音：低频的「咚」 */
-  function tone(t0, f1, f2, dur, vol, type){
-    var o = ctx.createOscillator(); o.type = type || "sine";
-    o.frequency.setValueAtTime(f1, t0);
-    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
-    var g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(vol, t0 + 0.008);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    o.connect(g); g.connect(bus);
-    o.start(t0); o.stop(t0 + dur + 0.02);
+  /* —— 临时调试用：出声时左上角闪一下，确认到底有没有触发 —— */
+  function flash(kind){
+    var d = document.getElementById("dbg"); if (!d) return;
+    d.textContent = "♪ " + kind + "　音频:" + (ctx ? ctx.state : "未创建");
+    d.style.opacity = "1";
+    clearTimeout(d._t); d._t = setTimeout(function(){ d.style.opacity = ".25"; }, 700);
   }
 
   function play(kind){
     if (!on || !wake()) return;
     var t = ctx.currentTime + 0.001;
-    if (kind === "page"){          /* 翻页：一声轻拂 */
-      air(t, 0.26, 420, 1500, 0.9, 0.30);
-      tone(t, 190, 120, 0.16, 0.17);
-    } else if (kind === "open"){   /* 开片：快门，咔—嗒 */
-      air(t,         0.014, 2600, 1500, 5, 0.95);
-      air(t + 0.055, 0.018, 1700,  800, 4, 0.72);
-      tone(t + 0.055, 150, 80, 0.10, 0.26);
-    } else if (kind === "close"){  /* 关片：快门合上 */
-      air(t, 0.016, 1500, 2400, 5, 0.68);
-      tone(t, 140, 90, 0.09, 0.20);
-    } else if (kind === "tick"){   /* 小按钮：一点点 */
-      air(t, 0.022, 2000, 1400, 5, 0.52);
+    if (kind === "page"){          /* 翻页：一道短气流 */
+      swish(t, 0.16, 1600, 4200, 0.42);
+    } else if (kind === "open"){   /* 开片：快门，两记亮脆的嗒 */
+      click(t,         3600, 0.012, 0.95, 1.6);
+      click(t + 0.050, 2300, 0.016, 0.80, 1.4);
+    } else if (kind === "close"){  /* 关片：一记 */
+      click(t, 2600, 0.014, 0.80, 1.6);
+    } else if (kind === "tick"){   /* 小按钮：iPhone 那种干脆的一下 */
+      click(t, 3100, 0.009, 0.90, 1.8);
     }
+    flash(kind);
   }
-
-  /* 第一次点击页面任何地方就解锁，之后出声才不会被浏览器拦 */
-  ["pointerdown","touchstart","keydown"].forEach(function(ev){
-    addEventListener(ev, function unlock(){ if (on) wake(); }, { passive: true });
-  });
 
   var btn = document.getElementById("sfx-toggle");
   if (btn) btn.addEventListener("click", function(){
