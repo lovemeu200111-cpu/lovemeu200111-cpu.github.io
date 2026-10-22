@@ -52,11 +52,6 @@ body.lang-en .en{display:inline}
 #mode-switch button.on{background:var(--ink);color:#fff}
 #mode-switch[hidden]{display:none}
 
-/* 临时调试条，确认没问题后删掉 */
-#dbg{position:fixed;left:var(--pad);top:var(--pad);z-index:300;background:#1e1c21;color:#fff;
-  border-radius:var(--r);padding:8px 12px;font:600 12px/1.3 var(--mono,monospace);
-  opacity:.25;transition:opacity .15s linear;pointer-events:none}
-
 /* 声音开关：右下角 */
 #sfx-toggle{position:fixed;right:var(--pad);bottom:var(--pad);z-index:200;
   background:var(--chip);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
@@ -283,7 +278,6 @@ body.nocap .card-cap{display:none}
   </nav>
 </header>
 <button id="lang-toggle">中 / EN</button>
-<div id="dbg">版本 SFX-3　点一下页面任意处</div>
 <button id="sfx-toggle" aria-label="声音">
   <svg class="on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>
   <svg class="off" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9.5l4 5M21 9.5l-4 5"/></svg>
@@ -773,20 +767,6 @@ document.querySelectorAll(".nav-drop a").forEach(function(a){
     if (!box.contains(e.target)) { box.classList.remove("open"); tog.setAttribute("aria-expanded","false"); }
   });
 
-  /* 鼠标掠过一行响一下。只在「进入新的一行」时触发，
-     并且两声之间至少隔 55 毫秒，快速扫过去不会变成连珠炮。 */
-  var lastAt = 0, lastRow = null;
-  rows.forEach(function(tr){
-    tr.addEventListener("mouseenter", function(){
-      if (tr === lastRow) return;
-      lastRow = tr;
-      var now = performance.now();
-      if (now - lastAt < 55) return;
-      lastAt = now;
-      if (window.SFX) SFX.play("hover");
-    });
-    tr.addEventListener("mouseleave", function(){ if (lastRow === tr) lastRow = null; });
-  });
 })();
 
 var listMode = false;
@@ -831,7 +811,6 @@ var FLOW = (function(){
   var EASE  = 0.085;                    // 追赶的松紧：越小越黏
   var unit  = [];                       // 每列「一轮」有多高
   var target = 0, cur = 0, raf = 0;
-  var notch = 0, lastCur = 0, lastTick = 0;   // 齿轮声：累计滚动量
   var bornAt = performance.now();       // 字标进场
   var vh = innerHeight;
   var ALL = [].slice.call(document.querySelectorAll(".grid .card"))
@@ -906,15 +885,6 @@ var FLOW = (function(){
     raf = 0;
     cur += (target - cur) * EASE;
     if (Math.abs(target - cur) < 0.08) cur = target;
-    /* 每滚过一「格」响一声，滚得快就密、慢下来自然变疏、停了就不响 */
-    if (window.SFX && alive){
-      notch += Math.abs(cur - lastCur);
-      var now = performance.now();
-      if (notch >= 84 && now - lastTick > 28){
-        notch = 0; lastTick = now; SFX.play("gear");
-      } else if (notch >= 84){ notch = 0; }
-    }
-    lastCur = cur;
     draw();
     if (Math.abs(target - cur) > 0.01) kick();
   }
@@ -1222,33 +1192,6 @@ var SFX = (function(){
     src.start(t0); src.stop(t0 + dur + 0.01);
   }
 
-  /* 棘轮转过一格：
-     第一层是接触的脆响，第二层是材料自己的共振（很短，不是「咚」），
-     两层叠起来才有木头／金属的质感，不会只剩尖。 */
-  function detent(t0, f, vol){
-    /* 接触：一瞬间的宽频噪声 */
-    var s1 = ctx.createBufferSource(); s1.buffer = noise; s1.loop = true;
-    var b1 = ctx.createBiquadFilter(); b1.type = "bandpass"; b1.frequency.value = f; b1.Q.value = 1.1;
-    var h1 = ctx.createBiquadFilter(); h1.type = "highpass"; h1.frequency.value = 260;
-    var g1 = ctx.createGain();
-    g1.gain.setValueAtTime(0, t0);
-    g1.gain.linearRampToValueAtTime(vol, t0 + 0.0010);
-    g1.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.010);
-    s1.connect(b1); b1.connect(h1); h1.connect(g1); g1.connect(bus);
-    s1.start(t0); s1.stop(t0 + 0.02);
-
-    /* 共振：窄带噪声在低中频响一小下，26 毫秒就没，给的是「材料」不是「低音」 */
-    var s2 = ctx.createBufferSource(); s2.buffer = noise; s2.loop = true;
-    var b2 = ctx.createBiquadFilter(); b2.type = "bandpass";
-    b2.frequency.value = f * 0.30; b2.Q.value = 7.5;
-    var g2 = ctx.createGain();
-    g2.gain.setValueAtTime(0, t0);
-    g2.gain.linearRampToValueAtTime(vol * 1.5, t0 + 0.0016);
-    g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.026);
-    s2.connect(b2); b2.connect(g2); g2.connect(bus);
-    s2.start(t0); s2.stop(t0 + 0.04);
-  }
-
   /* 体感层：70~95Hz 的一下，20 毫秒就没。
      这个频段耳机还原得好，人是「感觉到」而不是「听到」，
      所以有震感，又不会变回之前那种拖长的「咚」。 */
@@ -1269,56 +1212,13 @@ var SFX = (function(){
     try { if (navigator.vibrate) navigator.vibrate(ms); } catch(e){}
   }
 
-  /* 一道气流声：翻页用，同样不带低音 */
-  function swish(t0, dur, f1, f2, vol){
-    var src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
-    var bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 0.7;
-    bp.frequency.setValueAtTime(f1, t0);
-    bp.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
-    var hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 800;
-    var g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(vol, t0 + dur * 0.22);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    src.connect(bp); bp.connect(hp); hp.connect(g); g.connect(bus);
-    src.start(t0); src.stop(t0 + dur + 0.02);
-  }
-
-  /* —— 临时调试用：出声时左上角闪一下，确认到底有没有触发 —— */
-  function flash(kind){
-    var d = document.getElementById("dbg"); if (!d) return;
-    d.textContent = "♪ " + kind + "　音频:" + (ctx ? ctx.state : "未创建");
-    d.style.opacity = "1";
-    clearTimeout(d._t); d._t = setTimeout(function(){ d.style.opacity = ".25"; }, 700);
-  }
-
-  function play(kind){
+  /* 只有一个声音：点击。滚动、悬停一律不出声 */
+  function play(){
     if (!on || !wake()) return;
     var t = ctx.currentTime + 0.001;
-    if (kind === "page"){          /* 翻页：一道短气流 */
-      swish(t, 0.16, 1600, 4200, 0.42);
-    } else if (kind === "open"){   /* 开片：快门，两记亮脆的嗒 */
-      click(t,         3600, 0.012, 0.95, 1.6);
-      body(t, 90, 0.024, 0.38);
-      click(t + 0.050, 2300, 0.016, 0.80, 1.4);
-      body(t + 0.050, 72, 0.030, 0.44);
-      buzz([10, 40, 16]);
-    } else if (kind === "close"){  /* 关片：一记 */
-      click(t, 2600, 0.014, 0.80, 1.6);
-      body(t, 80, 0.022, 0.46);
-      buzz(10);
-    } else if (kind === "tick"){   /* 小按钮：干脆的一下 */
-      click(t, 3100, 0.010, 1.45, 1.8);
-      body(t, 86, 0.018, 0.38);
-      buzz(7);
-    } else if (kind === "hover"){  /* 列表上滑过一行：比点击还轻，不带低频 */
-      click(t, 2500, 0.0075, 0.60, 2.0);
-    } else if (kind === "gear"){   /* 棘轮转过一格 */
-      detent(t, 920 + Math.random() * 300, 1.25 + Math.random() * 0.30);
-      body(t, 78 + Math.random() * 16, 0.020, 0.28);   /* 体感的一震 */
-      buzz(6);
-    }
-    if (kind !== "gear" && kind !== "hover") flash(kind);
+    click(t, 3100, 0.010, 1.45, 1.8);
+    body(t, 86, 0.018, 0.38);
+    buzz(7);
   }
 
   var btn = document.getElementById("sfx-toggle");
