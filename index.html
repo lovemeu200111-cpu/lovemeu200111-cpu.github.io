@@ -1205,6 +1205,33 @@ var SFX = (function(){
     src.start(t0); src.stop(t0 + dur + 0.01);
   }
 
+  /* 棘轮转过一格：
+     第一层是接触的脆响，第二层是材料自己的共振（很短，不是「咚」），
+     两层叠起来才有木头／金属的质感，不会只剩尖。 */
+  function detent(t0, f, vol){
+    /* 接触：一瞬间的宽频噪声 */
+    var s1 = ctx.createBufferSource(); s1.buffer = noise; s1.loop = true;
+    var b1 = ctx.createBiquadFilter(); b1.type = "bandpass"; b1.frequency.value = f; b1.Q.value = 1.1;
+    var h1 = ctx.createBiquadFilter(); h1.type = "highpass"; h1.frequency.value = 260;
+    var g1 = ctx.createGain();
+    g1.gain.setValueAtTime(0, t0);
+    g1.gain.linearRampToValueAtTime(vol, t0 + 0.0010);
+    g1.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.010);
+    s1.connect(b1); b1.connect(h1); h1.connect(g1); g1.connect(bus);
+    s1.start(t0); s1.stop(t0 + 0.02);
+
+    /* 共振：窄带噪声在低中频响一小下，26 毫秒就没，给的是「材料」不是「低音」 */
+    var s2 = ctx.createBufferSource(); s2.buffer = noise; s2.loop = true;
+    var b2 = ctx.createBiquadFilter(); b2.type = "bandpass";
+    b2.frequency.value = f * 0.30; b2.Q.value = 7.5;
+    var g2 = ctx.createGain();
+    g2.gain.setValueAtTime(0, t0);
+    g2.gain.linearRampToValueAtTime(vol * 1.5, t0 + 0.0016);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.026);
+    s2.connect(b2); b2.connect(g2); g2.connect(bus);
+    s2.start(t0); s2.stop(t0 + 0.04);
+  }
+
   /* 一道气流声：翻页用，同样不带低音 */
   function swish(t0, dur, f1, f2, vol){
     var src = ctx.createBufferSource(); src.buffer = noise; src.loop = true;
@@ -1240,9 +1267,8 @@ var SFX = (function(){
       click(t, 2600, 0.014, 0.80, 1.6);
     } else if (kind === "tick"){   /* 小按钮：干脆的一下 */
       click(t, 3100, 0.010, 1.45, 1.8);
-    } else if (kind === "gear"){   /* 齿轮转过一格：又短又干，带一点点随机音高才像机械 */
-      var f = 1500 + Math.random() * 600;
-      click(t, f, 0.0075, 1.30 + Math.random() * 0.30, 1.5);
+    } else if (kind === "gear"){   /* 棘轮转过一格 */
+      detent(t, 920 + Math.random() * 300, 1.25 + Math.random() * 0.30);
     }
     if (kind !== "gear") flash(kind);
   }
