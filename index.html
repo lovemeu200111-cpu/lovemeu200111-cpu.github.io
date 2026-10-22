@@ -111,8 +111,9 @@ body.nocap .card-cap{display:none}
 .grid-logo{position:absolute;inset:0;z-index:150;display:grid;place-items:center;
   grid-template-columns:minmax(0,1fr);pointer-events:none;will-change:opacity}
 .mark{display:flex;align-items:center;gap:.055em;color:var(--ink);
-  font:400 clamp(53px,min(17.6vw,41vh),607px)/1 var(--disp);letter-spacing:-.008em;
-  transform:scaleX(.7576);transform-origin:center center}
+  font:400 100px/1 var(--disp);letter-spacing:-.008em;
+  transform:scaleX(.7576);transform-origin:center center;
+  white-space:nowrap}   /* 字号由脚本按实际宽度算出来，见 fitMark() */
 .mark .w{display:block;transform:translateY(.012em)}
 .mark .brk{height:1.20em;width:auto;fill:none;stroke:currentColor;stroke-width:23;
   stroke-linecap:round;stroke-linejoin:round;margin-right:.03em}
@@ -265,7 +266,6 @@ body.nocap .card-cap{display:none}
   #lang-toggle{padding:12px 13px;font-size:15px}
     .ltable td{font-size:15px;padding:4px 10px}
   .ltable th{padding:11px 10px;font-size:14px}
-  .mark{font-size:clamp(37px,min(18.7vw,29vh),119px)}
   .pbar{gap:9px;padding:9px 11px;font-size:13px}
   .pnav{width:62px;bottom:72px}
   .pnav span{font-size:11px}
@@ -1242,6 +1242,37 @@ var SFX = (function(){
     wake: function(){ return wake(); },
     test: function(){ on = true; document.body.classList.remove("muted"); play("open"); return SFX.state(); }
   };
+})();
+/* ============================================================
+   字标自适应：不猜字号，直接量出「这一行在当前字体下有多宽」，
+   再反算出正好占满 87% 屏宽的字号。
+   字体没加载完、加载失败、换浏览器——都不会撑出画面。
+   ============================================================ */
+(function(){
+  var mark = document.querySelector(".mark");
+  if (!mark) return;
+  var SQUEEZE = 0.7576;          // 跟 CSS 里的 scaleX 保持一致
+  var WANT = 0.87;               // 占屏幕宽度的比例
+  var BASE = 100;                // 量尺寸用的基准字号
+
+  function fit(){
+    mark.style.fontSize = BASE + "px";
+    var natural = mark.scrollWidth;        // 压扁之前的真实宽度
+    if (!natural) return;
+    var target = innerWidth * WANT;
+    var size = BASE * target / (natural * SQUEEZE);
+    var vh = innerHeight;
+    if (size > vh * 0.42) size = vh * 0.42;   // 窗口很扁时别顶破上下
+    mark.style.fontSize = size.toFixed(1) + "px";
+  }
+
+  fit();
+  addEventListener("resize", fit);
+  addEventListener("orientationchange", function(){ setTimeout(fit, 250); });
+  addEventListener("load", fit);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+  /* 字体晚到也要重算一次 */
+  setTimeout(fit, 400); setTimeout(fit, 1500);
 })();
 </script>
 </body>
