@@ -1041,6 +1041,8 @@ var PLAY = (function(){
     bg.style.backgroundImage = "url(images/cover" + two(w.n) + ".jpg)";
     pv.src    = "videos/v"     + two(w.n) + ".mp4";
     pv.currentTime = 0;
+    pv.muted = false;                       /* 每次打开都是有声的 */
+    bMute.innerHTML = bi("静音", "Mute");
     fill.style.width = "0%"; seek.style.setProperty("--p", "0%");
     tEl.textContent = "00:00 / " + (w.d || "00:00");
 
