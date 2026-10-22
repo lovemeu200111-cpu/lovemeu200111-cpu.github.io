@@ -816,6 +816,7 @@ var FLOW = (function(){
   var EASE  = 0.085;                    // 追赶的松紧：越小越黏
   var unit  = [];                       // 每列「一轮」有多高
   var target = 0, cur = 0, raf = 0;
+  var notch = 0, lastCur = 0, lastTick = 0;   // 齿轮声：累计滚动量
   var bornAt = performance.now();       // 字标进场
   var vh = innerHeight;
   var ALL = [].slice.call(document.querySelectorAll(".grid .card"))
@@ -890,6 +891,15 @@ var FLOW = (function(){
     raf = 0;
     cur += (target - cur) * EASE;
     if (Math.abs(target - cur) < 0.08) cur = target;
+    /* 每滚过一「格」响一声，滚得快就密、慢下来自然变疏、停了就不响 */
+    if (window.SFX && alive){
+      notch += Math.abs(cur - lastCur);
+      var now = performance.now();
+      if (notch >= 84 && now - lastTick > 28){
+        notch = 0; lastTick = now; SFX.play("gear");
+      } else if (notch >= 84){ notch = 0; }
+    }
+    lastCur = cur;
     draw();
     if (Math.abs(target - cur) > 0.01) kick();
   }
@@ -1228,10 +1238,13 @@ var SFX = (function(){
       click(t + 0.050, 2300, 0.016, 0.80, 1.4);
     } else if (kind === "close"){  /* 关片：一记 */
       click(t, 2600, 0.014, 0.80, 1.6);
-    } else if (kind === "tick"){   /* 小按钮：iPhone 那种干脆的一下 */
-      click(t, 3100, 0.009, 0.90, 1.8);
+    } else if (kind === "tick"){   /* 小按钮：干脆的一下 */
+      click(t, 3100, 0.010, 1.45, 1.8);
+    } else if (kind === "gear"){   /* 齿轮转过一格：又短又干，带一点点随机音高才像机械 */
+      var f = 1500 + Math.random() * 600;
+      click(t, f, 0.0075, 1.30 + Math.random() * 0.30, 1.5);
     }
-    flash(kind);
+    if (kind !== "gear") flash(kind);
   }
 
   var btn = document.getElementById("sfx-toggle");
