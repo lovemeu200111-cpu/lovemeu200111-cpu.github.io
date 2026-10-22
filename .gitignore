@@ -1,0 +1,22 @@
+# 原始素材和备份，不上传（太大，网站也用不到）
+_原片/
+_原片.zip
+_backup/
+_build/
+
+# 开发时的零碎
+.DS_Store
+*.command
+测试-*.html
+vendor/
+images/1.jpg
+images/2.jpg
+images/3.jpg
+images/4.jpg
+images/5.jpg
+images/6.jpg
+images/7.jpg
+videos/_压缩日志.txt
+
+# 沙箱留下的临时副本
+*.sb-*

@@ -1,0 +1,1126 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Aubrey Labs — 张琪 Zhang Qi</title>
+<style>
+@import url("fonts/local.css");
+:root{
+  --bg:#ffffff; --ink:#1e1c21; --muted:#9b9b9f;
+  --chip:rgba(245,245,245,.72); --chip-op:#f2f2f2;
+  --gap:16px; --pad:16px; --r:8.5px;
+  --ease:cubic-bezier(.65,0,.35,1);
+  --sans:"Manrope",-apple-system,"PingFang SC","Hiragino Sans GB","Helvetica Neue",sans-serif;
+  --disp:"Anton","Manrope",-apple-system,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:400 16px/1.35 var(--sans);
+  -webkit-font-smoothing:antialiased;letter-spacing:-.012em;overflow:hidden}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;letter-spacing:inherit}
+svg{display:block}
+[hidden]{display:none!important}   /* 内联 display 会压过 hidden，这条兜底 */
+.sr{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.en{display:none}
+body.lang-en .zh{display:none}
+body.lang-en .en{display:inline}
+
+.nav-header{position:fixed;top:var(--pad);left:50%;transform:translateX(-50%);
+  z-index:200;width:222px;background:var(--chip);backdrop-filter:blur(10px);
+  border-radius:var(--r);overflow:hidden}
+#menu-toggle{display:block;width:100%;padding:12px 0;font-weight:500;text-align:center}
+.nav-drop{display:grid;padding:0 0 10px;text-align:center}
+.nav-drop a{padding:5px 0;color:var(--muted);transition:color .25s var(--ease)}
+.nav-drop a:hover,.nav-drop a.on{color:var(--ink)}
+.nav-header:not(.open) .nav-drop{display:none}
+#lang-toggle{position:fixed;top:var(--pad);right:var(--pad);z-index:200;
+  background:var(--chip);backdrop-filter:blur(10px);border-radius:var(--r);
+  padding:12px 16px;font-weight:500}
+#view-toggle{position:fixed;left:50%;transform:translateX(-50%);bottom:var(--pad);z-index:200;
+  background:var(--chip);backdrop-filter:blur(10px);border-radius:var(--r);
+  padding:12px 18px;font-weight:500;display:flex;align-items:center;gap:9px}
+#view-toggle svg{width:15px;height:15px;fill:currentColor}
+#view-toggle[hidden]{display:none}
+
+/* 封面显示方式：海报 ｜ 截图 */
+#mode-switch{position:fixed;left:var(--pad);bottom:var(--pad);z-index:200;display:flex;gap:3px;
+  background:var(--chip);backdrop-filter:blur(10px);border-radius:var(--r);padding:3px}
+#mode-switch button{border-radius:calc(var(--r) - 2px);padding:9px 15px;font-weight:500;
+  color:var(--muted);transition:background .35s var(--ease),color .35s var(--ease)}
+#mode-switch button.on{background:var(--ink);color:#fff}
+#mode-switch[hidden]{display:none}
+
+.page{position:fixed;inset:0;overflow:hidden}
+.page[hidden]{display:none}
+
+.grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(var(--cols,4),1fr);
+  gap:var(--gap);padding:0 var(--pad)}
+.grid-col{will-change:transform;backface-visibility:hidden;visibility:hidden}
+.grid-track{display:flex;flex-direction:column;gap:var(--gap)}
+.card{position:relative;display:block;flex:none;border-radius:var(--r);
+  overflow:hidden;background:#ececeb;aspect-ratio:var(--ar,3/4)}
+.card-media{position:absolute;inset:0;display:block}
+/* 两套封面都是 3:4，整张铺满卡片 */
+.card-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.card-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.card-frame{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+body.frames .card-poster{display:none}
+body.frames .card-frame{display:block}
+.card-video{opacity:0;transition:opacity .45s var(--ease);z-index:1}
+.card.playing .card-video{opacity:1}
+.card.waiting .card-arrow{opacity:.45}
+.card-arrow{transition:opacity .3s var(--ease)}
+/* 片名：左下角一枚浅灰小胶囊，鼠标移上去才淡入 */
+.card-cap{position:absolute;left:10px;bottom:10px;z-index:2;max-width:calc(100% - 20px);
+  background:var(--chip);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  color:var(--ink);border-radius:5.5px;padding:6px 9px;
+  font-weight:500;font-size:12.5px;line-height:1.25;letter-spacing:-.004em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;
+  opacity:0;transform:translateY(5px);
+  transition:opacity .34s var(--ease),transform .34s var(--ease)}
+.card:hover .card-cap,.card:focus-visible .card-cap{opacity:1;transform:none}
+/* 手机没有鼠标，直接显示 */
+@media (hover:none){ .card-cap{opacity:1;transform:none} }
+body.nocap .card-cap{display:none}
+
+.card-arrow{position:absolute;right:10px;top:10px;z-index:2;width:30px;height:30px;
+  border-radius:50%;background:var(--chip);backdrop-filter:blur(10px);display:grid;place-items:center}
+.card-arrow svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- 字标 ( AUBREY ✱ LABS ) ---------- */
+.grid-logo{position:absolute;inset:0;z-index:150;display:grid;place-items:center;
+  pointer-events:none;will-change:opacity}
+.mark{display:flex;align-items:center;gap:.055em;color:var(--ink);
+  font:400 clamp(40px,min(13.3vw,31vh),460px)/1 var(--disp);letter-spacing:-.008em}
+.mark .w{display:block;transform:translateY(.012em)}
+.mark .brk{height:1.20em;width:auto;fill:none;stroke:currentColor;stroke-width:18;
+  stroke-linecap:round;stroke-linejoin:round;margin-right:.03em}
+.mark .brk--r{transform:scaleX(-1);margin:0 0 0 .03em}
+.mark .ast{height:.97em;width:.97em;fill:currentColor;margin:0 .055em;display:block}
+.blade{transform-origin:0 0}
+
+/* ---------- 列表 ---------- */
+#p-list{background:var(--bg);overflow-y:auto;padding:calc(var(--pad) + 62px) clamp(16px,3.2vw,52px) 96px}
+.lfilters{display:flex;flex-direction:column;align-items:flex-start;gap:9px;margin-bottom:22px}
+.gtoggle{gap:9px}
+.gcur{display:inline-flex;align-items:baseline;gap:7px}
+.gchev{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.1;
+  stroke-linecap:round;stroke-linejoin:round;opacity:.5;align-self:center;
+  transition:transform .34s var(--ease)}
+.lfilters.open .gchev{transform:rotate(180deg)}
+.gwrap{display:flex;flex-wrap:wrap;gap:8px;overflow:hidden;max-height:0;opacity:0;
+  transition:max-height .4s var(--ease),opacity .26s var(--ease)}
+.lfilters.open .gwrap{max-height:260px;opacity:1}
+.gchip{background:var(--chip-op);border-radius:var(--r);padding:10px 15px;font-weight:500;
+  font-size:clamp(14px,1.1vw,17px);color:var(--ink);display:inline-flex;align-items:baseline;gap:7px;
+  transition:background .28s var(--ease),color .28s var(--ease)}
+.gchip em{font-style:normal;font-size:.78em;color:var(--muted);font-weight:500;
+  transition:color .28s var(--ease)}
+.gchip.on{background:var(--ink);color:#fff}
+.gchip.on em{color:rgba(255,255,255,.55)}
+.lrow[hidden]{display:none}
+.lempty{padding:30px 0;color:var(--muted);font-weight:500}
+.ltable{width:100%;border-collapse:collapse}
+.ltable th{background:var(--chip-op);font-weight:500;text-align:left;
+  padding:clamp(14px,1.7vh,20px) clamp(16px,1.6vw,26px);font-size:clamp(15px,1.25vw,19px)}
+.ltable th:first-child{border-radius:var(--r) 0 0 var(--r)}
+.ltable th:last-child{border-radius:0 var(--r) var(--r) 0;text-align:right}
+.ltable td{padding:clamp(5px,.95vh,11px) clamp(16px,1.6vw,26px);font-weight:700;
+  font-size:clamp(19px,2.35vw,34px);line-height:1.22;letter-spacing:-.026em}
+.ltable td.c-genre{text-align:right}
+.ltable .todo-cell{color:#d2d2d6;font-weight:500}
+.ltable tbody tr{transition:color .2s var(--ease);cursor:pointer}
+.ltable tbody:hover tr{color:#c8c8cb}
+.ltable tbody tr:hover{color:var(--ink)}
+.c-title{width:46%}.c-lang{width:30%}
+
+/* ---------- 播放页 ---------- */
+#p-play{background:#000;color:#fff}
+#p-play::before,#p-play::after{content:"";position:absolute;left:0;right:0;z-index:2;
+  pointer-events:none;transition:opacity .4s var(--ease)}
+#p-play::before{top:0;height:26%;background:linear-gradient(to bottom,rgba(0,0,0,.6),rgba(0,0,0,0))}
+#p-play::after{bottom:0;height:32%;background:linear-gradient(to top,rgba(0,0,0,.66),rgba(0,0,0,0))}
+#p-play.idle::before,#p-play.idle::after{opacity:0}
+#pv{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:transparent;z-index:1}
+/* 竖版片子在宽屏上两边是黑的，垫一层放大模糊的封面 */
+.pbg{position:absolute;inset:0;z-index:0;background:#000 center/cover no-repeat;
+  filter:blur(46px) brightness(.42) saturate(1.15);transform:scale(1.18)}
+.pbar{position:absolute;left:var(--pad);right:var(--pad);bottom:var(--pad);z-index:5;
+  display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.14);
+  backdrop-filter:blur(10px);border-radius:var(--r);padding:11px 16px;font-size:14px}
+.pbar button{color:#fff;font-weight:500;white-space:nowrap}
+.pbar .seek{flex:1;height:16px;position:relative;cursor:pointer;touch-action:none}
+.pbar .seek::before{content:"";position:absolute;left:0;right:0;top:50%;margin-top:-1.5px;
+  height:3px;background:rgba(255,255,255,.3);border-radius:2px}
+.pbar .seek i{position:absolute;left:0;top:50%;margin-top:-1.5px;height:3px;width:0;
+  background:#fff;border-radius:2px}
+.pbar .seek::after{content:"";position:absolute;top:50%;left:var(--p,0%);
+  width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:#fff;
+  opacity:0;transition:opacity .2s var(--ease)}
+.pbar .seek:hover::after,.seek.dragging::after{opacity:1}
+#pt-name{font-size:clamp(18px,1.9vw,26px)}
+.ptitle{position:absolute;left:var(--pad);top:var(--pad);z-index:5;font-weight:700;font-size:19px;
+  text-shadow:0 1px 14px rgba(0,0,0,.6)}
+.pmeta{color:rgba(255,255,255,.72);font-weight:400;font-size:14px;margin-top:4px}
+#p-close{position:absolute;right:var(--pad);top:var(--pad);z-index:5;
+  background:rgba(255,255,255,.14);backdrop-filter:blur(10px);border-radius:var(--r);
+  padding:10px 15px;color:#fff;font-weight:500}
+.pnav{position:absolute;bottom:82px;z-index:5;width:clamp(78px,7.6vw,110px);border-radius:var(--r);
+  overflow:hidden;opacity:.7;transition:opacity .3s var(--ease),transform .3s var(--ease)}
+.pnav:hover{opacity:1;transform:translateY(-3px)}
+.pnav img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block}
+.pnav span{position:absolute;left:8px;bottom:6px;font-size:12px;font-weight:600;white-space:nowrap;
+  text-shadow:0 1px 6px rgba(0,0,0,.7)}
+.pnav--prev{left:var(--pad)}.pnav--next{right:var(--pad)}
+.pnav[disabled]{display:none}
+/* 鼠标不动两秒半，界面自己让开，只剩画面 */
+#p-play .pbar,#p-play .ptitle,#p-play .pnav,#p-play #p-close{
+  transition:opacity .4s var(--ease),transform .4s var(--ease)}
+#p-play.idle .pbar,#p-play.idle .ptitle,#p-play.idle .pnav,#p-play.idle #p-close{
+  opacity:0;pointer-events:none}
+#p-play.idle{cursor:none}
+
+/* ---------- 关于 ---------- */
+#p-about{background:var(--bg);overflow-y:auto;padding:calc(var(--pad) + 70px) clamp(16px,4vw,56px) 96px}
+/* ---------- 简历页 ---------- */
+.cv{max-width:860px;margin:0 auto}
+.cv-top{display:grid;grid-template-columns:auto 1fr auto;gap:clamp(20px,3vw,44px);
+  align-items:start;margin-bottom:46px}
+.cv-photo{position:relative;width:clamp(116px,11.6vw,168px);aspect-ratio:3/4;
+  border-radius:var(--r);overflow:hidden;background:var(--chip-op);flex:none}
+.cv-photo img{width:100%;height:100%;object-fit:cover;display:block;position:relative;z-index:2}
+.cv-photo-hint{position:absolute;inset:0;z-index:1;display:grid;place-content:center;
+  text-align:center;padding:10px;color:#b0b0b5;font:500 11px/1.5 var(--sans)}
+.cv-id{min-width:0}
+.cv-contact{list-style:none;display:grid;gap:7px;justify-items:end;text-align:right;padding-top:6px}
+.cv-contact li{display:flex;align-items:baseline;gap:11px;font-weight:700;font-size:15px}
+.cv-contact .k{color:var(--muted);font-weight:500;font-size:13px}
+.cv-contact a{border-bottom:1px solid #e3e3e0}
+.cv-contact a:hover{border-color:var(--ink)}
+.cv-top h2{font:400 clamp(38px,5.4vw,74px)/1 var(--disp);letter-spacing:-.01em}
+.cv-top h2 em{font:500 clamp(15px,1.5vw,20px)/1 var(--sans);font-style:normal;
+  color:var(--muted);letter-spacing:0}
+.cv-sub{font-weight:700;font-size:clamp(16px,1.5vw,20px);margin-top:12px}
+.cv-meta{color:var(--muted);font-weight:500;font-size:15px;margin-top:8px;line-height:1.6}
+.cv-top h2 em{display:block;margin:8px 0 0}
+.cv-item{display:grid;grid-template-columns:168px 1fr;gap:22px;
+  padding:19px 0;border-top:1px solid #eeeeec}
+.cv-item:first-of-type{border-top:0;padding-top:4px}
+.cv-when{color:var(--muted);font:500 14px/1.5 var(--mono,var(--sans));padding-top:3px}
+.cv-what h4{font-weight:700;font-size:clamp(17px,1.6vw,21px);letter-spacing:-.018em;
+  display:grid;grid-template-columns:minmax(0,230px) 1fr;align-items:baseline;gap:14px}
+.cv-what h4 em{font-style:normal;font-weight:500;color:var(--muted);
+  font-size:14px;letter-spacing:0}
+.cv-what p{font-weight:500;font-size:15px;line-height:1.52;color:#45454a;margin-top:7px}
+.cv-skills{display:grid;grid-template-columns:repeat(2,1fr);gap:18px 30px}
+.cv-skill h4{font-weight:700;font-size:16px}
+.cv-skill p{font-weight:500;font-size:14.5px;line-height:1.5;color:#45454a;margin-top:5px}
+@media (max-width:809px){
+  .cv-item{grid-template-columns:1fr;gap:6px}
+  .cv-top{grid-template-columns:auto 1fr;gap:18px}
+  .cv-contact{grid-column:1 / -1;justify-items:start;text-align:left;padding-top:14px}
+  .cv-what h4{grid-template-columns:1fr;gap:3px}
+  .cv-skills{grid-template-columns:1fr}
+}
+
+.about-col{max-width:455px}
+.cv .ahead{margin:40px 0 16px}
+.ahead{display:inline-block;background:var(--ink);color:#fff;border-radius:var(--r);
+  padding:9px 15px;font-weight:500;font-size:16px;margin:34px 0 14px}
+.about-col > .ahead:first-child{margin-top:0}
+.about-col p{font-weight:700;font-size:16px;line-height:1.28;letter-spacing:-.016em;margin-bottom:14px}
+.caps{display:flex;flex-wrap:wrap;gap:9px;max-width:520px}
+.caps li{list-style:none;background:var(--chip-op);border-radius:var(--r);padding:10px 15px;font-weight:500}
+.studio li,.contact li{list-style:none;font-weight:700;font-size:16px;line-height:1.5}
+.studio em,.contact em{font-style:normal;color:var(--muted);font-weight:500;margin-left:8px}
+.contact em{font-size:14px}
+.todo{background:#fff6d6;padding:1px 5px;border-radius:3px;font-weight:500;font-size:14px}
+
+@media (max-width:809px){
+  .grid{gap:11px;padding:0 11px}
+  .nav-header{left:var(--pad);transform:none;width:auto}
+  #menu-toggle{padding:12px 20px}
+  #lang-toggle{padding:12px 13px;font-size:15px}
+    .ltable td{font-size:15px;padding:4px 10px}
+  .ltable th{padding:11px 10px;font-size:14px}
+  .mark{font-size:clamp(28px,min(14.2vw,22vh),90px)}
+  .pbar{gap:9px;padding:9px 11px;font-size:13px}
+  .pnav{width:62px;bottom:72px}
+  .pnav span{font-size:11px}
+  .ptitle{font-size:16px;max-width:60vw}
+}
+</style>
+</head>
+<body>
+
+<header class="nav-header" id="nav-header">
+  <button id="menu-toggle"><span class="zh">菜单</span><span class="en">Menu</span></button>
+  <nav class="nav-drop">
+    <a href="#home" class="on"><span class="zh">首页</span><span class="en">Home</span></a>
+    <a href="#about"><span class="zh">关于</span><span class="en">About</span></a>
+  </nav>
+</header>
+<button id="lang-toggle">中 / EN</button>
+
+
+<div id="mode-switch">
+  <button class="on" data-mode="poster"><span class="zh">海报</span><span class="en">Poster</span></button>
+  <button data-mode="frame"><span class="zh">截图</span><span class="en">Still</span></button>
+</div>
+
+<section class="page" id="p-home">
+  <div class="grid" id="grid">
+      <div class="grid-col" data-col="1" data-direction="down">
+        <div class="grid-track">
+        <a class="card" href="#w1" data-n="1">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover01.jpg" alt="若能再相见">
+            <img class="card-frame" src="images/frame01.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">若能再相见</span><span class="en">If We Meet Again</span></span>
+        </a>
+        <a class="card" href="#w5" data-n="5">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover05.jpg" alt="Beautiful">
+            <img class="card-frame" src="images/frame05.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">Beautiful</span><span class="en">Beautiful</span></span>
+        </a>
+        <a class="card" href="#w9" data-n="9">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover09.jpg" alt="檐上霜">
+            <img class="card-frame" src="images/frame09.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">檐上霜</span><span class="en">Frost on the Eaves</span></span>
+        </a>
+        <a class="card" href="#w13" data-n="13">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover13.jpg" alt="Bait Girls">
+            <img class="card-frame" src="images/frame13.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">Bait Girls</span><span class="en">Bait Girls</span></span>
+        </a>
+        <a class="card" href="#w17" data-n="17">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover17.jpg" alt="青春篮途 2">
+            <img class="card-frame" src="images/frame17.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">青春篮途 2</span><span class="en">Youth on the Court 2</span></span>
+        </a>
+        </div>
+      </div>
+      <div class="grid-col" data-col="2" data-direction="up">
+        <div class="grid-track">
+        <a class="card" href="#w2" data-n="2">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover02.jpg" alt="在见到你之前">
+            <img class="card-frame" src="images/frame02.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">在见到你之前</span><span class="en">Until I Saw You</span></span>
+        </a>
+        <a class="card" href="#w6" data-n="6">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover06.jpg" alt="Blackstone">
+            <img class="card-frame" src="images/frame06.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">Blackstone</span><span class="en">Blackstone</span></span>
+        </a>
+        <a class="card" href="#w10" data-n="10">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover10.jpg" alt="末班车">
+            <img class="card-frame" src="images/frame10.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">末班车</span><span class="en">Last Train</span></span>
+        </a>
+        <a class="card" href="#w14" data-n="14">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover14.jpg" alt="Lily and Moss">
+            <img class="card-frame" src="images/frame14.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">Lily and Moss</span><span class="en">Lily and Moss</span></span>
+        </a>
+        <a class="card" href="#w18" data-n="18">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover18.jpg" alt="动物餐厅">
+            <img class="card-frame" src="images/frame18.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">动物餐厅</span><span class="en">Animal Restaurant</span></span>
+        </a>
+        </div>
+      </div>
+      <div class="grid-col" data-col="3" data-direction="down">
+        <div class="grid-track">
+        <a class="card" href="#w3" data-n="3">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover03.jpg" alt="新人冥使的第一单 1">
+            <img class="card-frame" src="images/frame03.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">新人冥使的第一单 1</span><span class="en">Rookie Reaper 1</span></span>
+        </a>
+        <a class="card" href="#w7" data-n="7">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover07.jpg" alt="Of course, Sir">
+            <img class="card-frame" src="images/frame07.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">Of course, Sir</span><span class="en">Of course, Sir</span></span>
+        </a>
+        <a class="card" href="#w11" data-n="11">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover11.jpg" alt="游戏世界的归航之旅 1">
+            <img class="card-frame" src="images/frame11.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">游戏世界的归航之旅 1</span><span class="en">The Long Way Home 1</span></span>
+        </a>
+        <a class="card" href="#w15" data-n="15">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover15.jpg" alt="归途">
+            <img class="card-frame" src="images/frame15.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">归途</span><span class="en">The Way Home</span></span>
+        </a>
+        <a class="card" href="#w19" data-n="19">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover19.jpg" alt="我的体内藏着番剧主角">
+            <img class="card-frame" src="images/frame19.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">我的体内藏着番剧主角</span><span class="en">The Anime Girl Inside Me</span></span>
+        </a>
+        </div>
+      </div>
+      <div class="grid-col" data-col="4" data-direction="up">
+        <div class="grid-track">
+        <a class="card" href="#w4" data-n="4">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover04.jpg" alt="新人冥使的第一单 2">
+            <img class="card-frame" src="images/frame04.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">新人冥使的第一单 2</span><span class="en">Rookie Reaper 2</span></span>
+        </a>
+        <a class="card" href="#w8" data-n="8">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover08.jpg" alt="夜港">
+            <img class="card-frame" src="images/frame08.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">夜港</span><span class="en">The Night Harbour</span></span>
+        </a>
+        <a class="card" href="#w12" data-n="12">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover12.jpg" alt="游戏世界的归航之旅 2">
+            <img class="card-frame" src="images/frame12.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">游戏世界的归航之旅 2</span><span class="en">The Long Way Home 2</span></span>
+        </a>
+        <a class="card" href="#w16" data-n="16">
+          <span class="card-media">
+            <img class="card-poster" src="images/cover16.jpg" alt="青春篮途 1">
+            <img class="card-frame" src="images/frame16.jpg" alt="" aria-hidden="true">
+            <video class="card-video" muted loop playsinline preload="none"></video>
+          </span>
+          <span class="card-arrow" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 16L16 8M16 8H9.5M16 8v6.5"/></svg></span>
+          <span class="card-cap"><span class="zh">青春篮途 1</span><span class="en">Youth on the Court 1</span></span>
+        </a>
+        </div>
+      </div>
+  </div>
+  <div class="grid-logo">
+    <div class="mark"><svg class="brk" viewBox="0 0 44 160" aria-hidden="true"><path d="M38 10 H22 C15 10 11 15 11 23 V137 C11 145 15 150 22 150 H38"/></svg><span class="w">AUBREY</span><svg class="ast ast-iris" viewBox="-60 -60 120 120" aria-hidden="true"><defs><clipPath id="irisC"><circle r="53"/></clipPath></defs><g clip-path="url(#irisC)"><path class="blade" d="M0,-54 A54,54 0 0 1 46.77,-27 L9.53,-5.5 L0,-11 Z" transform="rotate(0)"/><path class="blade" d="M0,-54 A54,54 0 0 1 46.77,-27 L9.53,-5.5 L0,-11 Z" transform="rotate(60)"/><path class="blade" d="M0,-54 A54,54 0 0 1 46.77,-27 L9.53,-5.5 L0,-11 Z" transform="rotate(120)"/><path class="blade" d="M0,-54 A54,54 0 0 1 46.77,-27 L9.53,-5.5 L0,-11 Z" transform="rotate(180)"/><path class="blade" d="M0,-54 A54,54 0 0 1 46.77,-27 L9.53,-5.5 L0,-11 Z" transform="rotate(240)"/><path class="blade" d="M0,-54 A54,54 0 0 1 46.77,-27 L9.53,-5.5 L0,-11 Z" transform="rotate(300)"/></g></svg><span class="w">LABS</span><svg class="brk brk--r" viewBox="0 0 44 160" aria-hidden="true"><path d="M38 10 H22 C15 10 11 15 11 23 V137 C11 145 15 150 22 150 H38"/></svg></div>
+  </div>
+</section>
+
+<section class="page" id="p-list" hidden>
+  <div class="lfilters" id="lfilters">
+      <button class="gchip gtoggle" id="gtoggle" aria-expanded="false">
+        <span class="gcur"><span class="zh">全部</span><span class="en">All</span><em>19</em></span>
+        <svg class="gchev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5L12 15.5L18 9.5"/></svg>
+      </button>
+      <div class="gwrap" id="gwrap">
+          <button class="gchip on" data-g=""><span class="zh">全部</span><span class="en">All</span><em>19</em></button>
+          <button class="gchip" data-g="动画"><span class="zh">动画</span><span class="en">Animation</span><em>4</em></button>
+          <button class="gchip" data-g="剧情"><span class="zh">剧情</span><span class="en">Drama</span><em>3</em></button>
+          <button class="gchip" data-g="穿越"><span class="zh">穿越</span><span class="en">Time Travel</span><em>3</em></button>
+          <button class="gchip" data-g="宠物"><span class="zh">宠物</span><span class="en">Pets</span><em>2</em></button>
+          <button class="gchip" data-g="悬疑"><span class="zh">悬疑</span><span class="en">Mystery</span><em>2</em></button>
+          <button class="gchip" data-g="运动"><span class="zh">运动</span><span class="en">Sports</span><em>2</em></button>
+          <button class="gchip" data-g="爱情"><span class="zh">爱情</span><span class="en">Romance</span><em>1</em></button>
+          <button class="gchip" data-g="科幻"><span class="zh">科幻</span><span class="en">Sci-Fi</span><em>1</em></button>
+          <button class="gchip" data-g="黑帮"><span class="zh">黑帮</span><span class="en">Crime</span><em>1</em></button>
+      </div>
+    </div>
+  <table class="ltable">
+    <thead><tr><th class="c-title"><span class="zh">作品</span><span class="en">Project</span></th>
+      <th class="c-lang"><span class="zh">语言</span><span class="en">Language</span></th><th class="c-genre"><span class="zh">题材</span><span class="en">Genre</span></th></tr></thead>
+    <tbody id="list-body">
+          <tr class="lrow" data-n="1" data-g="宠物">
+            <td class="c-title"><span class="zh">若能再相见</span><span class="en">If We Meet Again</span></td>
+            <td class="c-lang"><span class="zh">韩语</span><span class="en">Korean</span></td>
+            <td class="c-genre"><span class="zh">宠物</span><span class="en">Pets</span></td>
+          </tr>
+          <tr class="lrow" data-n="2" data-g="爱情">
+            <td class="c-title"><span class="zh">在见到你之前</span><span class="en">Until I Saw You</span></td>
+            <td class="c-lang"><span class="zh">韩语</span><span class="en">Korean</span></td>
+            <td class="c-genre"><span class="zh">爱情</span><span class="en">Romance</span></td>
+          </tr>
+          <tr class="lrow" data-n="3" data-g="剧情">
+            <td class="c-title"><span class="zh">新人冥使的第一单 1</span><span class="en">Rookie Reaper 1</span></td>
+            <td class="c-lang"><span class="zh">日语</span><span class="en">Japanese</span></td>
+            <td class="c-genre"><span class="zh">剧情</span><span class="en">Drama</span></td>
+          </tr>
+          <tr class="lrow" data-n="4" data-g="剧情">
+            <td class="c-title"><span class="zh">新人冥使的第一单 2</span><span class="en">Rookie Reaper 2</span></td>
+            <td class="c-lang"><span class="zh">日语</span><span class="en">Japanese</span></td>
+            <td class="c-genre"><span class="zh">剧情</span><span class="en">Drama</span></td>
+          </tr>
+          <tr class="lrow" data-n="5" data-g="动画">
+            <td class="c-title"><span class="zh">Beautiful</span><span class="en">Beautiful</span></td>
+            <td class="c-lang"><span class="zh">英语</span><span class="en">English</span></td>
+            <td class="c-genre"><span class="zh">动画</span><span class="en">Animation</span></td>
+          </tr>
+          <tr class="lrow" data-n="6" data-g="悬疑">
+            <td class="c-title"><span class="zh">Blackstone</span><span class="en">Blackstone</span></td>
+            <td class="c-lang"><span class="zh">英语</span><span class="en">English</span></td>
+            <td class="c-genre"><span class="zh">悬疑</span><span class="en">Mystery</span></td>
+          </tr>
+          <tr class="lrow" data-n="7" data-g="科幻">
+            <td class="c-title"><span class="zh">Of course, Sir</span><span class="en">Of course, Sir</span></td>
+            <td class="c-lang"><span class="zh">英语</span><span class="en">English</span></td>
+            <td class="c-genre"><span class="zh">科幻</span><span class="en">Sci-Fi</span></td>
+          </tr>
+          <tr class="lrow" data-n="8" data-g="黑帮">
+            <td class="c-title"><span class="zh">夜港</span><span class="en">The Night Harbour</span></td>
+            <td class="c-lang"><span class="zh">日语</span><span class="en">Japanese</span></td>
+            <td class="c-genre"><span class="zh">黑帮</span><span class="en">Crime</span></td>
+          </tr>
+          <tr class="lrow" data-n="9" data-g="动画">
+            <td class="c-title"><span class="zh">檐上霜</span><span class="en">Frost on the Eaves</span></td>
+            <td class="c-lang"><span class="zh">中文</span><span class="en">Chinese</span></td>
+            <td class="c-genre"><span class="zh">动画</span><span class="en">Animation</span></td>
+          </tr>
+          <tr class="lrow" data-n="10" data-g="穿越">
+            <td class="c-title"><span class="zh">末班车</span><span class="en">Last Train</span></td>
+            <td class="c-lang"><span class="zh">中文</span><span class="en">Chinese</span></td>
+            <td class="c-genre"><span class="zh">穿越</span><span class="en">Time Travel</span></td>
+          </tr>
+          <tr class="lrow" data-n="11" data-g="穿越">
+            <td class="c-title"><span class="zh">游戏世界的归航之旅 1</span><span class="en">The Long Way Home 1</span></td>
+            <td class="c-lang"><span class="zh">日语</span><span class="en">Japanese</span></td>
+            <td class="c-genre"><span class="zh">穿越</span><span class="en">Time Travel</span></td>
+          </tr>
+          <tr class="lrow" data-n="12" data-g="穿越">
+            <td class="c-title"><span class="zh">游戏世界的归航之旅 2</span><span class="en">The Long Way Home 2</span></td>
+            <td class="c-lang"><span class="zh">日语</span><span class="en">Japanese</span></td>
+            <td class="c-genre"><span class="zh">穿越</span><span class="en">Time Travel</span></td>
+          </tr>
+          <tr class="lrow" data-n="13" data-g="悬疑">
+            <td class="c-title"><span class="zh">Bait Girls</span><span class="en">Bait Girls</span></td>
+            <td class="c-lang"><span class="zh">韩语</span><span class="en">Korean</span></td>
+            <td class="c-genre"><span class="zh">悬疑</span><span class="en">Mystery</span></td>
+          </tr>
+          <tr class="lrow" data-n="14" data-g="动画">
+            <td class="c-title"><span class="zh">Lily and Moss</span><span class="en">Lily and Moss</span></td>
+            <td class="c-lang"><span class="zh">英语</span><span class="en">English</span></td>
+            <td class="c-genre"><span class="zh">动画</span><span class="en">Animation</span></td>
+          </tr>
+          <tr class="lrow" data-n="15" data-g="宠物">
+            <td class="c-title"><span class="zh">归途</span><span class="en">The Way Home</span></td>
+            <td class="c-lang"><span class="zh">韩语</span><span class="en">Korean</span></td>
+            <td class="c-genre"><span class="zh">宠物</span><span class="en">Pets</span></td>
+          </tr>
+          <tr class="lrow" data-n="16" data-g="运动">
+            <td class="c-title"><span class="zh">青春篮途 1</span><span class="en">Youth on the Court 1</span></td>
+            <td class="c-lang"><span class="zh">日语</span><span class="en">Japanese</span></td>
+            <td class="c-genre"><span class="zh">运动</span><span class="en">Sports</span></td>
+          </tr>
+          <tr class="lrow" data-n="17" data-g="运动">
+            <td class="c-title"><span class="zh">青春篮途 2</span><span class="en">Youth on the Court 2</span></td>
+            <td class="c-lang"><span class="zh">日语</span><span class="en">Japanese</span></td>
+            <td class="c-genre"><span class="zh">运动</span><span class="en">Sports</span></td>
+          </tr>
+          <tr class="lrow" data-n="18" data-g="动画">
+            <td class="c-title"><span class="zh">动物餐厅</span><span class="en">Animal Restaurant</span></td>
+            <td class="c-lang"><span class="zh">日语</span><span class="en">Japanese</span></td>
+            <td class="c-genre"><span class="zh">动画</span><span class="en">Animation</span></td>
+          </tr>
+          <tr class="lrow" data-n="19" data-g="剧情">
+            <td class="c-title"><span class="zh">我的体内藏着番剧主角</span><span class="en">The Anime Girl Inside Me</span></td>
+            <td class="c-lang"><span class="zh">中文</span><span class="en">Chinese</span></td>
+            <td class="c-genre"><span class="zh">剧情</span><span class="en">Drama</span></td>
+          </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="page" id="p-play" hidden>
+  <div class="pbg" id="p-bg"></div>
+  <video id="pv" playsinline controlslist="nodownload noremoteplayback noplaybackrate"
+         disablepictureinpicture disableremoteplayback></video>
+  <div class="ptitle"><span id="pt-name"></span>
+    <div class="pmeta" id="pt-meta"></div></div>
+  <button id="p-close"><span class="zh">关闭</span><span class="en">Close</span></button>
+  <button class="pnav pnav--prev" id="p-prev"><img id="p-prev-img" src="" alt=""><span><span class="zh">上一部</span><span class="en">Prev</span></span></button>
+  <button class="pnav pnav--next" id="p-next"><img id="p-next-img" src="" alt=""><span><span class="zh">下一部</span><span class="en">Next</span></span></button>
+  <div class="pbar">
+    <button id="pb-play"><span class="zh">暂停</span><span class="en">Pause</span></button>
+    <span class="seek" id="pb-seek"><i id="pb-fill"></i></span>
+    <span id="pb-time">00:00 / 00:00</span>
+    <button id="pb-mute"><span class="zh">静音</span><span class="en">Mute</span></button>
+    <button id="pb-full"><span class="zh">全屏</span><span class="en">Full</span></button>
+  </div>
+</section>
+
+<section class="page" id="p-about" hidden>
+  <div class="cv">
+    <header class="cv-top">
+      <div class="cv-photo">
+        <img src="images/me.jpg" alt="张琪" onerror="this.style.display='none';this.parentElement.classList.add('empty')">
+        <span class="cv-photo-hint"><span class="zh">把你的照片存成<br>images/me.jpg</span><span class="en">drop a photo at<br>images/me.jpg</span></span>
+      </div>
+      <div class="cv-id">
+        <h2>张琪<em>Aubrey</em></h2>
+        <p class="cv-sub"><span class="zh">AI 视频导演 · 编剧</span><span class="en">AI Video Director · Writer</span></p>
+        <p class="cv-meta"><span class="zh">2001.11 生 · 新疆维吾尔自治区 · 现居北京</span><span class="en">Born 2001 · from Xinjiang · based in Beijing</span></p>
+      </div>
+      <ul class="cv-contact">
+        <li><span class="k"><span class="zh">邮箱</span><span class="en">Email</span></span><a href="mailto:306670985@qq.com">306670985@qq.com</a></li>
+        <li><span class="k"><span class="zh">微信</span><span class="en">WeChat</span></span><span>QQBUN-</span></li>
+      </ul>
+    </header>
+
+    <span class="ahead"><span class="zh">教育经历</span><span class="en">Education</span></span>
+      <div class="cv-item">
+        <div class="cv-when"><span class="zh">2025.9 至今</span><span class="en">2025.9 – now</span></div>
+        <div class="cv-what">
+          <h4><span class="zh">北京师范大学</span><span class="en">Beijing Normal University</span><em><span class="zh">广播电视与新媒体（硕士在读）</span><span class="en">MA, Broadcasting &amp; New Media</span></em></h4>
+        <p><span class="zh">专业课程：电视艺术创意与实践 89 · AI 艺术创作 88 · 视听语言与剪辑 87 · 影视摄影与实践 88</span><span class="en">Coursework: TV Creative Practice 89 · AI Art Creation 88 · Cinematic Language &amp; Editing 87 · Cinematography 88</span></p>
+        <p><span class="zh">荣誉：2025「燃喵杯」河南省短视频大赛优秀奖</span><span class="en">Award: 2025 Ranmiao Cup Henan Short-Video Competition, Merit Award</span></p>
+        </div>
+      </div>
+      <div class="cv-item">
+        <div class="cv-when"><span class="zh">2019.9 – 2023.6</span><span class="en">2019.9 – 2023.6</span></div>
+        <div class="cv-what">
+          <h4><span class="zh">新疆艺术学院</span><span class="en">Xinjiang Arts University</span><em><span class="zh">广播电视编导（学士）</span><span class="en">BA, Film &amp; TV Directing</span></em></h4>
+        <p><span class="zh">GPA 3.77 / 4.00，专业前 10%</span><span class="en">GPA 3.77 / 4.00 — top 10% of the programme</span></p>
+        <p><span class="zh">专业课程：电视编辑 93 · 移动媒体直播训练 90 · 影视声音设计 91 · 纪录片创作 87</span><span class="en">Coursework: TV Editing 93 · Live Streaming 90 · Sound Design 91 · Documentary 87</span></p>
+        <p><span class="zh">荣誉：2022 校级二等奖学金 · 教育部「习思想领航计划」微电影大赛三等奖（团队）· 第十届中国高等院校影视学会「学院奖」三等奖 · 新疆大学生艺术展演三等奖</span><span class="en">Awards: 2022 Second-Class Scholarship · MoE Short-Film Competition, Third Prize (team) · 10th China Film &amp; TV Academy Award, Third Prize · Xinjiang Student Arts Festival, Third Prize</span></p>
+        </div>
+      </div>
+
+    <span class="ahead"><span class="zh">实践经历</span><span class="en">Experience</span></span>
+      <div class="cv-item">
+        <div class="cv-when"><span class="zh">2026.08 – 2026.12</span><span class="en">2026.08 – 2026.12</span></div>
+        <div class="cv-what">
+          <h4><span class="zh">海马云 RunningHub</span><span class="en">RunningHub</span><em><span class="zh">AI 视频制作实习生</span><span class="en">AI Video Production Intern</span></em></h4>
+        <p><span class="zh">负责「Story 剧场」板块原创内容生产，独立完成剧本创作、AI 生图、AI 视频生成到成片上线的全流程。</span><span class="en">Produced original content for the Story Theatre section — script, AI imagery, AI video generation, through to release, end to end.</span></p>
+        <p><span class="zh">独立创作并上线多部 AI 短剧，题材涵盖科幻、动画、悬疑、穿越。</span><span class="en">Wrote and shipped multiple AI short dramas across sci-fi, animation, mystery and time-travel.</span></p>
+        <p><span class="zh">系统测试 Story 板块多个迭代版本，提出 3 项核心优化建议；为玄幻、古风言情等题材搭建 6 套剧本优化 Skill。</span><span class="en">Tested successive Story releases and proposed 3 core improvements; built 6 script-polishing skills across genres.</span></p>
+        </div>
+      </div>
+      <div class="cv-item">
+        <div class="cv-when"><span class="zh">2026.06 – 2026.07</span><span class="en">2026.06 – 2026.07</span></div>
+        <div class="cv-what">
+          <h4><span class="zh">看中国 · 北京行</span><span class="en">Looking China · Beijing</span><em><span class="zh">摄影 / 纪录片导演</span><span class="en">Cinematographer / Documentary Director</span></em></h4>
+        <p><span class="zh">与 11 位外国导演协同完成双语活动纪录片的拍摄制作。</span><span class="en">Shot and cut a bilingual event documentary alongside 11 international directors.</span></p>
+        <p><span class="zh">独立完成人物跟拍、活动纪实、空镜采集等多场景拍摄；全程中英双语协作。</span><span class="en">Handled character follow-shots, event coverage and B-roll solo; worked bilingually throughout.</span></p>
+        </div>
+      </div>
+      <div class="cv-item">
+        <div class="cv-when"><span class="zh">2022.10 – 2024.06</span><span class="en">2022.10 – 2024.06</span></div>
+        <div class="cv-what">
+          <h4><span class="zh">新疆造梦新禾影视</span><span class="en">Xinjiang Zaomeng Xinhe Film</span><em><span class="zh">导演 / 摄像 / 后期剪辑</span><span class="en">Director / DP / Editor</span></em></h4>
+        <p><span class="zh">主导政企宣传片、纪录片的前期策划、现场拍摄与后期制作全流程。</span><span class="en">Led corporate and government films from planning through shoot to post.</span></p>
+        <p><span class="zh">累计完成十余部纪录片与宣传片，《人生三分球》入选乌鲁木齐市委组织部党员教育优质片源库。</span><span class="en">Delivered over ten documentaries and promos; “Three-Pointer” was selected for the Ürümqi Party Education film library.</span></p>
+        </div>
+      </div>
+
+    <span class="ahead"><span class="zh">专业技能</span><span class="en">Skills</span></span>
+    <div class="cv-skills">
+      <div class="cv-skill"><h4><span class="zh">摄影器材</span><span class="en">Camera</span></h4><p><span class="zh">熟练操作多型号专业摄影机，掌握构图、运镜、光线运用及基础布光方法。</span><span class="en">Comfortable on a range of professional cameras; composition, camera movement, lighting and basic setups.</span></p></div>
+      <div class="cv-skill"><h4><span class="zh">AIGC 创作</span><span class="en">AI Creation</span></h4><p><span class="zh">熟练使用各类画布式 AI 创作平台完成生图与视频生成，能够设计提示词、搭建剧本优化工具，具备 AI 短剧从剧本到成片的全流程制作能力。</span><span class="en">Node-based AI creation platforms for image and video generation; prompt design, script-polishing tools, and a full script-to-release AI short-drama pipeline.</span></p></div>
+      <div class="cv-skill"><h4><span class="zh">工具搭建</span><span class="en">Tooling</span></h4><p><span class="zh">能够根据自身创作需求，使用 Claude 自主搭建专用工具与网站，将重复性制作流程工程化，持续提升创作效率。</span><span class="en">Builds bespoke tools and websites with Claude around his own production needs, turning repetitive steps into reusable workflows and lifting throughput.</span></p></div>
+      <div class="cv-skill"><h4><span class="zh">其他技能</span><span class="en">Other</span></h4><p><span class="zh">DaVinci Resolve 调色与多机位剪辑、After Effects 基础特效合成、无人机航拍、导播、影视项目统筹。</span><span class="en">DaVinci Resolve grading and multicam, After Effects, drone, vision mixing, production management.</span></p></div>
+      <div class="cv-skill"><h4><span class="zh">语言</span><span class="en">Languages</span></h4><p><span class="zh">中文母语 · 英语 CET-6</span><span class="en">Chinese native · English CET-6</span></p></div>
+    </div>
+
+    <span class="ahead"><span class="zh">能力</span><span class="en">Capabilities</span></span>
+    <ul class="caps"><li><span class="zh">AI 视频导演</span><span class="en">AI Video Direction</span></li><li><span class="zh">编剧</span><span class="en">Screenwriting</span></li><li><span class="zh">剪辑</span><span class="en">Editing</span></li><li><span class="zh">分镜</span><span class="en">Storyboard</span></li><li><span class="zh">后期</span><span class="en">Post-Production</span></li></ul>
+
+  </div>
+
+</section>
+
+<button id="view-toggle"><span class="vt-label"><span class="zh">列表</span><span class="en">List</span></span>
+  <svg viewBox="0 0 16 16"><rect y="2" width="16" height="2"/><rect y="7" width="16" height="2"/><rect y="12" width="16" height="2"/></svg>
+</button>
+
+<script>
+/* 第二步的脚本只负责「能点开看」。四列流动、无限循环、视频自动播、筛选都在第三步。 */
+var WORKS = [{"n":1,"zh":"若能再相见","en":"If We Meet Again","d":"02:43","gz":"宠物","ge":"Pets","lz":"韩语","le":"Korean"},{"n":2,"zh":"在见到你之前","en":"Until I Saw You","d":"02:19","gz":"爱情","ge":"Romance","lz":"韩语","le":"Korean"},{"n":3,"zh":"新人冥使的第一单 1","en":"Rookie Reaper 1","d":"02:19","gz":"剧情","ge":"Drama","lz":"日语","le":"Japanese"},{"n":4,"zh":"新人冥使的第一单 2","en":"Rookie Reaper 2","d":"06:14","gz":"剧情","ge":"Drama","lz":"日语","le":"Japanese"},{"n":5,"zh":"Beautiful","en":"Beautiful","d":"02:30","gz":"动画","ge":"Animation","lz":"英语","le":"English"},{"n":6,"zh":"Blackstone","en":"Blackstone","d":"02:03","gz":"悬疑","ge":"Mystery","lz":"英语","le":"English"},{"n":7,"zh":"Of course, Sir","en":"Of course, Sir","d":"03:14","gz":"科幻","ge":"Sci-Fi","lz":"英语","le":"English"},{"n":8,"zh":"夜港","en":"The Night Harbour","d":"02:20","gz":"黑帮","ge":"Crime","lz":"日语","le":"Japanese"},{"n":9,"zh":"檐上霜","en":"Frost on the Eaves","d":"02:02","gz":"动画","ge":"Animation","lz":"中文","le":"Chinese"},{"n":10,"zh":"末班车","en":"Last Train","d":"02:44","gz":"穿越","ge":"Time Travel","lz":"中文","le":"Chinese"},{"n":11,"zh":"游戏世界的归航之旅 1","en":"The Long Way Home 1","d":"02:24","gz":"穿越","ge":"Time Travel","lz":"日语","le":"Japanese"},{"n":12,"zh":"游戏世界的归航之旅 2","en":"The Long Way Home 2","d":"03:12","gz":"穿越","ge":"Time Travel","lz":"日语","le":"Japanese"},{"n":13,"zh":"Bait Girls","en":"Bait Girls","d":"02:11","gz":"悬疑","ge":"Mystery","lz":"韩语","le":"Korean"},{"n":14,"zh":"Lily and Moss","en":"Lily and Moss","d":"02:50","gz":"动画","ge":"Animation","lz":"英语","le":"English"},{"n":15,"zh":"归途","en":"The Way Home","d":"02:01","gz":"宠物","ge":"Pets","lz":"韩语","le":"Korean"},{"n":16,"zh":"青春篮途 1","en":"Youth on the Court 1","d":"02:37","gz":"运动","ge":"Sports","lz":"日语","le":"Japanese"},{"n":17,"zh":"青春篮途 2","en":"Youth on the Court 2","d":"02:26","gz":"运动","ge":"Sports","lz":"日语","le":"Japanese"},{"n":18,"zh":"动物餐厅","en":"Animal Restaurant","d":"02:11","gz":"动画","ge":"Animation","lz":"日语","le":"Japanese"},{"n":19,"zh":"我的体内藏着番剧主角","en":"The Anime Girl Inside Me","d":"02:32","gz":"剧情","ge":"Drama","lz":"中文","le":"Chinese"}];
+var PAGES = ["p-home","p-list","p-play","p-about"];
+function show(id){
+  PAGES.forEach(function(p){ document.getElementById(p).hidden = (p !== id); });
+  document.getElementById("view-toggle").hidden = (id === "p-play" || id === "p-about");
+  document.getElementById("mode-switch").hidden = (id !== "p-home");
+  document.getElementById("nav-header").classList.remove("open");
+  document.getElementById("nav-header").hidden = (id === "p-play");
+  document.getElementById("lang-toggle").hidden = (id === "p-play");
+  if (window.FLOW) FLOW.on(id === "p-home");
+  if (window.STOPALL && id !== "p-home") STOPALL();
+}
+document.getElementById("menu-toggle").onclick = function(e){
+  e.stopPropagation(); document.getElementById("nav-header").classList.toggle("open"); };
+document.addEventListener("click", function(){ document.getElementById("nav-header").classList.remove("open"); });
+document.querySelectorAll(".nav-drop a").forEach(function(a){
+  a.onclick = function(e){ e.preventDefault();
+    show(a.getAttribute("href") === "#about" ? "p-about" : "p-home");
+    document.querySelectorAll(".nav-drop a").forEach(function(x){ x.classList.remove("on"); });
+    a.classList.add("on"); };
+});
+/* ---- 列表页：按题材筛选 ---- */
+(function(){
+  var box  = document.getElementById("lfilters");
+  var wrap = document.getElementById("gwrap");
+  var tog  = document.getElementById("gtoggle");
+  if (!box || !wrap || !tog) return;
+  var cur  = tog.querySelector(".gcur");
+  var rows = [].slice.call(document.querySelectorAll(".lrow"));
+
+  tog.addEventListener("click", function(e){
+    e.stopPropagation();
+    var on = box.classList.toggle("open");
+    tog.setAttribute("aria-expanded", on ? "true" : "false");
+  });
+
+  wrap.addEventListener("click", function(e){
+    var b = e.target.closest(".gchip"); if (!b) return;
+    var g = b.dataset.g;
+    wrap.querySelectorAll(".gchip").forEach(function(x){ x.classList.toggle("on", x === b); });
+    rows.forEach(function(r){ r.hidden = !!g && r.dataset.g !== g; });
+    cur.innerHTML = b.innerHTML;          // 收起来之后，按钮上写着现在筛的是什么
+    box.classList.remove("open");
+    tog.setAttribute("aria-expanded", "false");
+  });
+
+  document.addEventListener("click", function(e){
+    if (!box.contains(e.target)) { box.classList.remove("open"); tog.setAttribute("aria-expanded","false"); }
+  });
+})();
+
+var listMode = false;
+document.getElementById("view-toggle").onclick = function(){
+  listMode = !listMode; show(listMode ? "p-list" : "p-home");
+  document.querySelector(".vt-label").innerHTML = listMode
+    ? '<span class="zh">网格</span><span class="en">Grid</span>'
+    : '<span class="zh">列表</span><span class="en">List</span>';
+};
+document.getElementById("grid").addEventListener("click", function(e){
+  var c = e.target.closest(".card"); if (!c) return;
+  e.preventDefault(); PLAY.open(+c.dataset.n);
+});
+document.querySelectorAll(".lrow").forEach(function(el){
+  el.addEventListener("click", function(){ PLAY.open(+el.dataset.n); });
+});
+document.getElementById("p-close").onclick = function(){ PLAY.close(); };
+document.getElementById("lang-toggle").onclick = function(){ document.body.classList.toggle("lang-en"); };
+/* 海报 ｜ 截图 —— 两套封面都留着，访客自己切 */
+document.querySelectorAll("#mode-switch button").forEach(function(b){
+  b.onclick = function(){
+    document.body.classList.toggle("frames", b.dataset.mode === "frame");
+    document.querySelectorAll("#mode-switch button").forEach(function(x){
+      x.classList.toggle("on", x === b);
+    });
+  };
+});
+/* ============================================================
+   四列流动引擎
+   滚轮 → 一个虚拟的位置 target；每帧让 cur 慢慢追上 target，
+   所以手停了画面还会滑一小段。每列速度不同、方向一上一下，
+   走完一轮就用取余数接回开头，于是永远滚不到底。
+   ============================================================ */
+var FLOW = (function(){
+  var grid  = document.getElementById("grid");
+  var cols  = [].slice.call(document.querySelectorAll(".grid-col"));
+  var logo  = document.querySelector(".grid-logo");
+  var blades= [].slice.call(document.querySelectorAll(".mark .blade"));
+  var SPEED = [1, 0.8, 1.1, 0.9];      // 每列快慢（跟参考站一致）
+  var EASE  = 0.085;                    // 追赶的松紧：越小越黏
+  var unit  = [];                       // 每列「一轮」有多高
+  var target = 0, cur = 0, raf = 0;
+  var bornAt = performance.now();       // 字标进场
+  var vh = innerHeight;
+  var ALL = [].slice.call(document.querySelectorAll(".grid .card"))
+               .sort(function(a,b){ return a.dataset.n - b.dataset.n; })
+               .map(function(c){ return c.outerHTML; });
+  function want(){ return innerWidth > 809 ? 4 : 2; }   // 电脑四列，手机两列
+  var alive = true;
+
+  /* 先按屏幕宽度把 19 部重新分到 2 列或 4 列，再每列复制到三屏高。
+     一开始把「往下」的列压在屏幕下方、「往上」的列吊在屏幕上方，
+     所以开场是一片白，只剩字标。 */
+  var D = [];
+  function build(){
+    vh = innerHeight;
+    var n = want();
+    grid.style.setProperty("--cols", n);
+    D = [];
+    cols.forEach(function(col, i){
+      var tr = col.querySelector(".grid-track");
+      if (i >= n){ col.hidden = true; tr.innerHTML = ""; return; }   // 多出来的列收起来
+      col.hidden = false;
+      var mine = "";
+      for (var k = i; k < ALL.length; k += n) mine += ALL[k];
+      tr.innerHTML = mine;
+      var n0 = tr.children.length;
+      var h0 = tr.scrollHeight;
+      if (!n0 || h0 <= 0) return;
+      var need = Math.max(1, Math.ceil(vh * 3 / h0) - 1);
+      for (var c = 0; c < need; c++) tr.insertAdjacentHTML("beforeend", mine);
+      D.push({
+        col  : col,
+        up   : col.dataset.direction === "up",
+        set  : tr.children[n0].offsetTop - tr.children[0].offsetTop,  // 一轮多高
+        H    : tr.scrollHeight + 2,   // 多躲 2 像素，开场时连卡片的圆角都不露
+        speed: SPEED[i % SPEED.length]
+      });
+      col.style.visibility = "visible";
+    });
+    draw();
+  }
+
+  function draw(){
+    for (var i = 0; i < D.length; i++){
+      var d = D[i], scroll = cur * d.speed, ty;
+      if (!d.up){
+        // 从屏幕下方升上来，之后一直往上走
+        ty = scroll <= vh ? vh - scroll : -((scroll - vh) % d.set);
+      } else {
+        // 从屏幕上方落下来，之后一直往下走
+        ty = scroll <= vh ? -d.H + scroll : -(d.H - vh) + ((scroll - vh) % d.set);
+      }
+      d.col.style.transform = "translate3d(0," + Math.floor(ty) + "px,0)";
+    }
+    if (logo){
+      var born = Math.min(1, (performance.now() - bornAt) / 900);
+      var fade = 1 - Math.min(1, Math.max(0, cur / (vh * 0.4)));
+      logo.style.opacity = (born * fade).toFixed(3);
+      if (born < 1) kick();
+    }
+    var spin = cur * 0.125;
+    if (blades.length){
+      /* 光圈：往下滚 = 镜头张开，作品从张开的口子里涌进来 */
+      var op = Math.min(1, Math.max(0, cur / (vh * 0.30)));  // 趁字标还在的时候就开完
+      op = op * op * (3 - 2 * op);
+      for (var b = 0; b < blades.length; b++)
+        blades[b].style.transform = "rotate(" + (b * 60 + spin * 0.34).toFixed(2) +
+          "deg) translate(0," + (-(2 + 17 * op)).toFixed(2) + "px)";
+    }
+  }
+
+  function tick(){
+    raf = 0;
+    cur += (target - cur) * EASE;
+    if (Math.abs(target - cur) < 0.08) cur = target;
+    draw();
+    if (Math.abs(target - cur) > 0.01) kick();
+  }
+  function kick(){ if (!raf) raf = requestAnimationFrame(tick); }
+
+  /* 往上滚到头就停在开场那一屏，不会倒着穿出去 */
+  function push(dy){ if (!alive) return; target = Math.max(0, target + dy); kick(); }
+
+  addEventListener("wheel", function(e){ push(e.deltaY); }, { passive: true });
+
+  var ty = 0;
+  addEventListener("touchstart", function(e){ ty = e.touches[0].clientY; }, { passive: true });
+  addEventListener("touchmove", function(e){
+    var y = e.touches[0].clientY; push((ty - y) * 1.5); ty = y;
+  }, { passive: true });
+
+  addEventListener("keydown", function(e){
+    if (!alive) return;
+    if (e.key === "ArrowDown" || e.key === "PageDown" || e.key === " ") push(innerHeight * 0.5);
+    else if (e.key === "ArrowUp" || e.key === "PageUp") push(-innerHeight * 0.5);
+  });
+
+  var rz;
+  addEventListener("resize", function(){ vh = innerHeight; clearTimeout(rz); rz = setTimeout(build, 180); });
+  addEventListener("orientationchange", function(){ setTimeout(build, 260); });
+
+  function toTop(){ target = 0; bornAt = performance.now(); kick(); }
+
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(build);
+  addEventListener("load", build);
+  build();
+
+  return {
+    intro: toTop,
+    rebuild: build,
+    at: function(){ return cur; },
+    on: function(v){ alive = v; }
+  };
+})();
+/* ============================================================
+   鼠标移到卡片上 → 自动播那部片的预览
+   规矩：停够 130 毫秒才开始下载（扫过去的不算）；
+   同时最多播 2 个；最多留 6 个已下载的，多的卸掉省内存。
+   手机没有鼠标，整段不生效。
+   ============================================================ */
+(function(){
+  if (matchMedia("(hover: none)").matches) return;
+  var grid = document.getElementById("grid");
+  if (!grid) return;
+
+  var playing = [];      // 正在播的卡片
+  var loaded  = [];      // 已经下过数据的 video
+  var timer = 0, pending = null;
+
+  function num(n){ return ("0" + n).slice(-2); }
+
+  function start(card){
+    var v = card.querySelector(".card-video");
+    if (!v || card.classList.contains("on")) return;
+    card.classList.add("on", "waiting");
+
+    if (!v.getAttribute("src")){
+      v.addEventListener("playing", function(){
+        if (card.classList.contains("on")) card.classList.add("playing");
+        card.classList.remove("waiting");
+      });
+      v.setAttribute("src", "videos/v" + num(card.dataset.n) + ".mp4");
+      loaded.push(v);
+      while (loaded.length > 6){
+        var old = loaded.shift();
+        if (old !== v && !old.closest(".card").classList.contains("on")){
+          old.removeAttribute("src"); old.load();
+        }
+      }
+    } else if (!v.paused){
+      card.classList.add("playing"); card.classList.remove("waiting");
+    }
+
+    var pr = v.play();
+    if (pr && pr.catch) pr.catch(function(){});
+    if (playing.indexOf(card) < 0) playing.push(card);
+    while (playing.length > 2) stop(playing[0]);
+  }
+
+  function stop(card){
+    if (!card) return;
+    var i = playing.indexOf(card);
+    if (i >= 0) playing.splice(i, 1);
+    card.classList.remove("on", "playing", "waiting");
+    var v = card.querySelector(".card-video");
+    if (v){ v.pause(); v.currentTime = 0; }
+  }
+
+  grid.addEventListener("mouseover", function(e){
+    var card = e.target.closest(".card");
+    if (!card || card === pending) return;
+    clearTimeout(timer); pending = card;
+    timer = setTimeout(function(){ start(card); }, 130);
+  });
+  grid.addEventListener("mouseout", function(e){
+    var card = e.target.closest(".card");
+    if (!card || (e.relatedTarget && card.contains(e.relatedTarget))) return;
+    if (card === pending){ clearTimeout(timer); pending = null; }
+    stop(card);
+  });
+
+  /* 离开首页、或者窗口切到后台，全部停掉 */
+  window.STOPALL = function(){ while (playing.length) stop(playing[0]); pending = null; clearTimeout(timer); };
+  addEventListener("visibilitychange", function(){ if (document.hidden) STOPALL(); });
+})();
+/* ============================================================
+   播放页：整屏看片
+   ============================================================ */
+var PLAY = (function(){
+  var pv   = document.getElementById("pv");
+  var bg   = document.getElementById("p-bg");
+  var page = document.getElementById("p-play");
+  var name = document.getElementById("pt-name"), meta = document.getElementById("pt-meta");
+  var seek = document.getElementById("pb-seek"), fill = document.getElementById("pb-fill");
+  var tEl  = document.getElementById("pb-time");
+  var bPlay= document.getElementById("pb-play"), bMute = document.getElementById("pb-mute");
+  var bFull= document.getElementById("pb-full");
+  var prev = document.getElementById("p-prev"),  next = document.getElementById("p-next");
+  var pimg = document.getElementById("p-prev-img"), nimg = document.getElementById("p-next-img");
+  var at = -1, idle = 0;
+
+  function two(n){ return ("0" + n).slice(-2); }
+  function clock(s){ s = Math.max(0, Math.floor(s || 0)); return two((s/60)|0) + ":" + two(s%60); }
+  function bi(zh, en){ return '<span class="zh">' + zh + '</span><span class="en">' + en + '</span>'; }
+
+  function open(n){
+    var i = 0;
+    for (var k = 0; k < WORKS.length; k++) if (WORKS[k].n === n) i = k;
+    at = i;
+    var w = WORKS[i];
+    name.innerHTML = bi(w.zh, w.en);
+    meta.innerHTML = bi(w.d + " · " + w.lz + " · " + w.gz, w.d + " · " + w.le + " · " + w.ge);
+    pv.poster = "images/cover" + two(w.n) + ".jpg";
+    bg.style.backgroundImage = "url(images/cover" + two(w.n) + ".jpg)";
+    pv.src    = "videos/v"     + two(w.n) + ".mp4";
+    pv.currentTime = 0;
+    fill.style.width = "0%"; seek.style.setProperty("--p", "0%");
+    tEl.textContent = "00:00 / " + (w.d || "00:00");
+
+    var p = WORKS[(i - 1 + WORKS.length) % WORKS.length];
+    var q = WORKS[(i + 1) % WORKS.length];
+    pimg.src = "images/cover" + two(p.n) + ".jpg";
+    nimg.src = "images/cover" + two(q.n) + ".jpg";
+
+    show("p-play");
+    go();
+    wake();
+  }
+
+  /* 浏览器可能拦下「带声音自动播放」，拦了就先静音播，再让他自己点开声音 */
+  function go(){
+    var pr = pv.play();
+    if (pr && pr.catch) pr.catch(function(){
+      pv.muted = true;
+      bMute.innerHTML = bi("取消静音", "Unmute");
+      var p2 = pv.play(); if (p2 && p2.catch) p2.catch(function(){});
+    });
+  }
+
+  function close(){
+    if (document.fullscreenElement) { try { document.exitFullscreen(); } catch(e){} }
+    pv.pause(); pv.removeAttribute("src"); pv.load();
+    page.classList.remove("idle"); clearTimeout(idle);
+    show(listMode ? "p-list" : "p-home");
+  }
+
+  function step(d){ if (at >= 0) open(WORKS[(at + d + WORKS.length) % WORKS.length].n); }
+
+  /* ---- 控制条 ---- */
+  bPlay.onclick = function(){ pv.paused ? go() : pv.pause(); };
+  pv.addEventListener("play",  function(){ bPlay.innerHTML = bi("暂停", "Pause"); });
+  pv.addEventListener("pause", function(){ bPlay.innerHTML = bi("播放", "Play"); });
+  pv.addEventListener("ended", function(){ step(1); });
+  bMute.onclick = function(){
+    pv.muted = !pv.muted;
+    bMute.innerHTML = pv.muted ? bi("取消静音", "Unmute") : bi("静音", "Mute");
+  };
+  bFull.onclick = function(){
+    if (document.fullscreenElement) document.exitFullscreen();
+    else if (page.requestFullscreen) page.requestFullscreen();
+  };
+  prev.onclick = function(){ step(-1); };
+  next.onclick = function(){ step(1); };
+
+  pv.addEventListener("timeupdate", function(){
+    if (!pv.duration) return;
+    var r = (pv.currentTime / pv.duration * 100);
+    fill.style.width = r.toFixed(2) + "%";
+    seek.style.setProperty("--p", r.toFixed(2) + "%");
+    tEl.textContent = clock(pv.currentTime) + " / " + clock(pv.duration);
+  });
+
+  function scrub(e){
+    var r = seek.getBoundingClientRect();
+    var x = Math.min(Math.max(e.clientX - r.left, 0), r.width) / r.width;
+    if (pv.duration) pv.currentTime = x * pv.duration;
+  }
+  seek.addEventListener("pointerdown", function(e){
+    seek.classList.add("dragging"); seek.setPointerCapture(e.pointerId); scrub(e);
+  });
+  seek.addEventListener("pointermove", function(e){ if (seek.classList.contains("dragging")) scrub(e); });
+  seek.addEventListener("pointerup", function(e){
+    seek.classList.remove("dragging");
+    try { seek.releasePointerCapture(e.pointerId); } catch(err){}
+  });
+
+  /* ---- 鼠标不动就把界面藏起来 ---- */
+  function wake(){
+    page.classList.remove("idle"); clearTimeout(idle);
+    idle = setTimeout(function(){ if (!pv.paused) page.classList.add("idle"); }, 2500);
+  }
+  page.addEventListener("mousemove", wake);
+  page.addEventListener("touchstart", wake, { passive: true });
+  page.addEventListener("click", function(e){
+    /* 界面已经藏起来时，第一下只是把它叫回来（手机上没有「移动鼠标」这回事） */
+    var hidden = page.classList.contains("idle");
+    if (!hidden && e.target === pv){ pv.paused ? go() : pv.pause(); }
+    wake();
+  });
+
+  /* ---- 键盘 ---- */
+  addEventListener("keydown", function(e){
+    if (document.getElementById("p-play").hidden) return;
+    if (e.key === "Escape"){ close(); }
+    else if (e.key === " "){ e.preventDefault(); pv.paused ? go() : pv.pause(); }
+    else if (e.key === "ArrowRight"){ e.preventDefault(); pv.currentTime += 5; }
+    else if (e.key === "ArrowLeft"){ e.preventDefault(); pv.currentTime -= 5; }
+    wake();
+  });
+
+  return { open: open, close: close };
+})();
+/* ---- 不让人顺手把片子存下来 ---- */
+(function(){
+  /* 右键「视频另存为」「图片另存为」都堵掉 */
+  document.addEventListener("contextmenu", function(e){
+    if (e.target.closest("video, .card, #p-play, .pnav, .card-media")) e.preventDefault();
+  });
+  /* 拖拽到桌面也堵掉 */
+  document.addEventListener("dragstart", function(e){
+    if (e.target.closest("video, img")) e.preventDefault();
+  });
+  /* 所有 video 都关掉浏览器自带的下载、投屏、画中画 */
+  function lock(v){
+    v.setAttribute("controlslist", "nodownload noremoteplayback noplaybackrate");
+    v.disablePictureInPicture = true;
+    v.disableRemotePlayback = true;
+  }
+  document.querySelectorAll("video").forEach(lock);
+  new MutationObserver(function(ms){
+    ms.forEach(function(m){
+      m.addedNodes.forEach(function(n){
+        if (n.nodeType !== 1) return;
+        if (n.tagName === "VIDEO") lock(n);
+        else if (n.querySelectorAll) n.querySelectorAll("video").forEach(lock);
+      });
+    });
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+</body>
+</html>
