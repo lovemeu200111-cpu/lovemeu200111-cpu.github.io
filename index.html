@@ -772,6 +772,21 @@ document.querySelectorAll(".nav-drop a").forEach(function(a){
   document.addEventListener("click", function(e){
     if (!box.contains(e.target)) { box.classList.remove("open"); tog.setAttribute("aria-expanded","false"); }
   });
+
+  /* 鼠标掠过一行响一下。只在「进入新的一行」时触发，
+     并且两声之间至少隔 55 毫秒，快速扫过去不会变成连珠炮。 */
+  var lastAt = 0, lastRow = null;
+  rows.forEach(function(tr){
+    tr.addEventListener("mouseenter", function(){
+      if (tr === lastRow) return;
+      lastRow = tr;
+      var now = performance.now();
+      if (now - lastAt < 55) return;
+      lastAt = now;
+      if (window.SFX) SFX.play("hover");
+    });
+    tr.addEventListener("mouseleave", function(){ if (lastRow === tr) lastRow = null; });
+  });
 })();
 
 var listMode = false;
@@ -1296,12 +1311,14 @@ var SFX = (function(){
       click(t, 3100, 0.010, 1.45, 1.8);
       body(t, 86, 0.018, 0.38);
       buzz(7);
+    } else if (kind === "hover"){  /* 列表上滑过一行：比点击还轻，不带低频 */
+      click(t, 2500, 0.0075, 0.60, 2.0);
     } else if (kind === "gear"){   /* 棘轮转过一格 */
       detent(t, 920 + Math.random() * 300, 1.25 + Math.random() * 0.30);
       body(t, 78 + Math.random() * 16, 0.020, 0.28);   /* 体感的一震 */
       buzz(6);
     }
-    if (kind !== "gear") flash(kind);
+    if (kind !== "gear" && kind !== "hover") flash(kind);
   }
 
   var btn = document.getElementById("sfx-toggle");
